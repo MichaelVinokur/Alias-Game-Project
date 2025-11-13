@@ -6,7 +6,7 @@
 [Mm]emoryCaptures/
 obj/
 ExportedObj/
-[200~.vs/
+.vs/
 .idea/
 *.csproj
 *.sln
