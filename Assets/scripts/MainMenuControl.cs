@@ -2,10 +2,15 @@ using UnityEngine;
 
 public class MainMenuControl : MonoBehaviour
 {
+    public GameObject rulesPanel;
     public void OnRulesButton()
     {
         Debug.Log("Rules button pressed");
-        // later: open Rules screen
+        rulesPanel.SetActive(true);
+    }
+    public void OnCloseRulesButton()
+    {
+        rulesPanel.SetActive(false);
     }
 
     public void OnSameRoomButton()
