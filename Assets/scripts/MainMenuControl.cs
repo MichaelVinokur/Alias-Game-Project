@@ -1,13 +1,16 @@
-using UnityEngine; 
+using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class MainMenuControl : MonoBehaviour
 {
     public GameObject rulesPanel;
+
     public void OnRulesButton()
     {
         Debug.Log("Rules button pressed");
         rulesPanel.SetActive(true);
     }
+
     public void OnCloseRulesButton()
     {
         rulesPanel.SetActive(false);
@@ -16,12 +19,11 @@ public class MainMenuControl : MonoBehaviour
     public void OnSameRoomButton()
     {
         Debug.Log("Same Room button pressed");
-        // later: open Same Room game mode
+        SceneManager.LoadScene("SameRoom");   // << IMPORTANT
     }
 
     public void OnOnlineButton()
     {
         Debug.Log("Online button pressed");
-        // later: open Online game mode
     }
 }
