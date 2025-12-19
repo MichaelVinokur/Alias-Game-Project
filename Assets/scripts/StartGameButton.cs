@@ -18,6 +18,6 @@ public class StartGameButton : MonoBehaviour
     void OnStartClicked()
     {
         // Load the game scene for everyone
-        PhotonNetwork.LoadLevel("GameScene");   // <-- change to your actual game scene name
+        PhotonNetwork.LoadLevel("ScoreboardScene");   // <-- change to your actual game scene name
     }
 }

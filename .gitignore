@@ -15,5 +15,7 @@ ExportedObj/
 *.pidb
 *.pdb
 *.mdb
+*.apk
+*.aab
 .DS_Store
 Thumbs.db
