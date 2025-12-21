@@ -16,6 +16,10 @@ public class GameManager : MonoBehaviour
     public WordCategory[] categories;
     public WordCategory currentCategory;   // ← MUST BE PUBLIC
 
+    // Loaded words for the currently selected category
+    private List<string> currentWords = new List<string>();
+    private List<string> deck = new List<string>();
+    private int deckIndex = 0;
     // Shortcuts
     public int RoundSeconds => settings.roundSeconds;
     public int NumberOfTeams => settings.numberOfTeams;
@@ -47,6 +51,8 @@ public class GameManager : MonoBehaviour
             index = 0;
 
         currentCategory = categories[index];
+        LoadCurrentCategoryWords();
+        ResetDeck();
     }
 
     // ==============================
@@ -65,16 +71,61 @@ public class GameManager : MonoBehaviour
 
         state.selectedCategoryIndex = index;
         currentCategory = categories[index];
+        LoadCurrentCategoryWords();
+        ResetDeck();
+    }
+
+    private void LoadCurrentCategoryWords()
+    {
+        if (currentCategory == null || string.IsNullOrEmpty(currentCategory.fileName))
+        {
+            Debug.LogError("GameManager: currentCategory or fileName is null!");
+            currentWords = new List<string>();
+            return;
+        }
+
+        currentWords = WordBank.LoadCategory(currentCategory.fileName);
+
+        if (currentWords.Count == 0)
+        {
+            Debug.LogError($"GameManager: FAILED to load words from Resources/Words/{currentCategory.fileName}");
+        }
+        else
+        {
+            Debug.Log($"GameManager: Successfully loaded {currentWords.Count} words for {currentCategory.categoryName}");
+        }
+    }
+
+    private void ResetDeck()
+    {
+        deck = new List<string>(currentWords);
+        Shuffle(deck);
+        deckIndex = 0;
     }
 
     public string GetRandomWord()
     {
-        if (currentCategory == null || currentCategory.words == null || currentCategory.words.Length == 0)
+        if (deck == null || deck.Count == 0)
             return "NO WORDS";
 
-        int r = Random.Range(0, currentCategory.words.Length);
-        return currentCategory.words[r];
+        if (deckIndex >= deck.Count)
+        {
+            Shuffle(deck);
+            deckIndex = 0;
+        }
+
+        return deck[deckIndex++];
     }
+
+    private void Shuffle(List<string> list)
+    {
+        for (int i = list.Count - 1; i > 0; i--)
+        {
+            int j = Random.Range(0, i + 1);
+            (list[i], list[j]) = (list[j], list[i]);
+        }
+    }
+
 
     // ==============================
     //        TEAM SYSTEM

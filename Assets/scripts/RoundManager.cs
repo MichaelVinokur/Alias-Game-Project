@@ -29,22 +29,27 @@ public class RoundManager : MonoBehaviourPunCallbacks
     void Start()
     {
         // SAFETY CHECK: Ensure GameManager exists
-        if (GameManager.Instance == null)
+        if (GameManager.Instance == null) return;
+
+        // בדיקה: האם אנחנו מחוברים לפוטון?
+        if (!PhotonNetwork.IsConnected)
         {
-            Debug.LogError("GameManager not found! Load from MainMenu.");
-            return;
+            Debug.LogWarning("Not connected to Photon! Working in offline mode.");
         }
 
-        // SAFETY CHECK: Ensure we have a PhotonView
-        if (photonView == null)
-        {
-            Debug.LogError("MISSING PHOTON VIEW! Add a 'PhotonView' component to this GameObject.");
-            return;
-        }
+        // סנכרון הקטגוריה לכל השחקנים בחדר
+        int selectedIdx = GameManager.Instance.state.selectedCategoryIndex;
+        GameManager.Instance.SetCategory(selectedIdx);
 
         teamIndex = GameManager.Instance.NextTeamIndex;
         timer = GameManager.Instance.RoundSeconds;
         running = true;
+
+        // רק ה-Master Client מוודא שהמשחק מתחיל לספור
+        if (PhotonNetwork.IsMasterClient)
+        {
+            Debug.Log("Master Client initialized the round.");
+        }
 
         PickReader();
         SetupButtons();
@@ -158,12 +163,10 @@ public class RoundManager : MonoBehaviourPunCallbacks
     [PunRPC]
     void RPC_SetWord(string w)
     {
+        Debug.Log($"RPC Received! Word: {w}"); // זה יגיד לנו אם הרשת עובדת
         if (wordText != null)
         {
-            if (isReader)
-                wordText.text = w;
-            else
-                wordText.text = "GUESS!";
+            wordText.text = isReader ? w : "GUESS!";
         }
     }
 

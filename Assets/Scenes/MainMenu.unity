@@ -1965,26 +1965,14 @@ MonoBehaviour:
     selectedCategoryIndex: 0
   categories:
   - categoryName: Animals
-    words:
-    - Cat
-    - Dog
-    - Elephant
-    - Lion
+    fileName: animals
   - categoryName: Movies & TV
-    words:
-    - Titanic
-    - Avatar
-    - Inception
-    - Gladiator
-  - categoryName: Inception Gladiator
-    words:
-    - Phone
-    - Chair
-    - Table
-    - Bottle
+    fileName: movies_tv
+  - categoryName: General
+    fileName: general
   currentCategory:
     categoryName: 
-    words: []
+    fileName: 
 --- !u!1 &6364183771153855414
 GameObject:
   m_ObjectHideFlags: 0

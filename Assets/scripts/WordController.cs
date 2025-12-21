@@ -17,8 +17,6 @@ public class WordController : MonoBehaviour
     private float timeLeft;
     private int score = 0;
 
-    private List<string> words = new List<string> { "Apple", "Banana", "Cat", "Dog" }; // fix later
-
     void Start()
     {
         timeLeft = roundTime;
@@ -49,31 +47,25 @@ public class WordController : MonoBehaviour
 
     void OnPlusClicked()
     {
-        score++;
+        GameManager.Instance.AddCorrectPoint(GameManager.Instance.NextTeamIndex);
         UpdateScoreText();
         NextWord();
     }
     void OnMinusClicked()
     {
-        score--;
+        GameManager.Instance.AddPenalty(GameManager.Instance.NextTeamIndex);
         UpdateScoreText();
         NextWord();
     }
 
     void UpdateScoreText()
     {
-        scoreText.text = score.ToString();
+        int i = GameManager.Instance.NextTeamIndex;
+        scoreText.text = GameManager.Instance.teams[i].score.ToString();
     }
 
     void NextWord()
     {
-        if (words.Count == 0)
-        {
-            wordText.text = "-";
-            return;
-        }
-
-        int index = Random.Range(0, words.Count);
-        wordText.text = words[index];
+        wordText.text = GameManager.Instance.GetRandomWord();
     }
 }
