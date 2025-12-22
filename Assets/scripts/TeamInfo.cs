@@ -12,6 +12,6 @@ public class TeamInfo
     {
         score += amount;
         if (score < 0)
-            score = 0;  // ⛔ never allow negative score
+            score = 0;  //  never allow negative score
     }
 }

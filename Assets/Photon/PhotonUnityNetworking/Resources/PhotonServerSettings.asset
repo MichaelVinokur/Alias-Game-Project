@@ -41,6 +41,7 @@ MonoBehaviour:
   - RespawnSpaceship
   - RPC_NewWord
   - RPC_SetWord
+  - RPC_GameOver
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 1

@@ -1957,7 +1957,7 @@ MonoBehaviour:
   settings:
     roundSeconds: 60
     numberOfTeams: 2
-    targetScore: 50
+    targetScore: 10
   teams: []
   state:
     currentTeamIndex: 0

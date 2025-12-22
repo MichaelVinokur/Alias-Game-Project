@@ -125,11 +125,20 @@ public class RoundManager : MonoBehaviourPunCallbacks
         {
             correctButton.onClick.AddListener(() =>
             {
-                if (!isReader) return;
-                if(audioSource && correctSFX) audioSource.PlayOneShot(correctSFX);
+                if (!isReader) return; // only the reader can change the score
+                if(audioSource && correctSFX) audioSource.PlayOneShot(correctSFX);//sound effect
                 
-                GameManager.Instance.AddCorrectPoint(teamIndex);
-                photonView.RPC("RPC_NewWord", RpcTarget.All);
+                GameManager.Instance.AddCorrectPoint(teamIndex); //++
+
+                if (GameManager.Instance.CheckWin(teamIndex))
+                {
+                    Debug.Log("Victory! Sending GameOver RPC...");
+                    photonView.RPC("RPC_GameOver", RpcTarget.All);
+                }
+                else
+                {
+                    photonView.RPC("RPC_NewWord", RpcTarget.All);
+                }
             });
         }
 
@@ -178,6 +187,17 @@ public class RoundManager : MonoBehaviourPunCallbacks
         {
             string w = GameManager.Instance.GetRandomWord();
             photonView.RPC("RPC_SetWord", RpcTarget.All, w);
+        }
+    }
+
+    [PunRPC] // the function can be sent over the network
+    void RPC_GameOver()
+    {
+        running = false;
+        Debug.Log("The game has ended! Moving to Scoreboard...");
+        if (PhotonNetwork.IsMasterClient)
+        {
+            PhotonNetwork.LoadLevel("EndGameScene"); // transfers everybody to EndGame. importent only masterclient sends this.
         }
     }
 
