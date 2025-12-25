@@ -1,6 +1,8 @@
-using UnityEngine;
 using Photon.Pun;
 using Photon.Realtime;
+using UnityEngine;
+using System.Collections;
+using UnityEngine.EventSystems;
 
 public class SameRoomNetworkManager : MonoBehaviourPunCallbacks
 {
@@ -42,6 +44,8 @@ public class SameRoomNetworkManager : MonoBehaviourPunCallbacks
     {
         if (hostPopupPanel != null)
             hostPopupPanel.SetActive(true);
+
+        //StartCoroutine(FocusTMP(hostNameInput));//android system fix
     }
 
     // X or Cancel in host popup
@@ -74,6 +78,7 @@ public class SameRoomNetworkManager : MonoBehaviourPunCallbacks
             hostCodeText.text = "Code: " + roomCode;
 
         hostPopupPanel.SetActive(false);
+        Debug.Log("Connected to Region: " + PhotonNetwork.CloudRegion);
     }
 
     // ================= JOINER FLOW =================
@@ -113,9 +118,10 @@ public class SameRoomNetworkManager : MonoBehaviourPunCallbacks
         PhotonNetwork.NickName = playerName;
 
         Debug.Log("Joining room: " + code);
-        PhotonNetwork.JoinRoom(code);
+        PhotonNetwork.JoinRoom(code); // chacks the code that was provided is correct
 
         joinPopupPanel.SetActive(false);
+        Debug.Log("Connected to Region: " + PhotonNetwork.CloudRegion);
     }
 
     // ================= PHOTON CALLBACKS =================
@@ -134,5 +140,26 @@ public class SameRoomNetworkManager : MonoBehaviourPunCallbacks
     public override void OnCreateRoomFailed(short returnCode, string message)
     {
         Debug.LogWarning("Create room failed: " + message);
+    }
+
+    //fix for android studio
+    private IEnumerator FocusTMP(TMPro.TMP_InputField field)
+    {
+        yield return null;
+        yield return new WaitForEndOfFrame();
+
+        // try to prevent immediate deselect
+        for (int i = 0; i < 10; i++)
+        {
+            EventSystem.current.SetSelectedGameObject(field.gameObject);
+            field.ActivateInputField();
+
+            Debug.Log("Selected: " +
+                      (EventSystem.current.currentSelectedGameObject
+                          ? EventSystem.current.currentSelectedGameObject.name
+                          : "null"));
+
+            yield return null;
+        }
     }
 }
