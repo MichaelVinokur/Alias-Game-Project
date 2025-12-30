@@ -3,7 +3,7 @@
     "m_SelectedProcess": {
         "deviceId": "emulator-5554",
         "name": "com.MaorMisha.Alias",
-        "processId": 15112,
+        "processId": 11608,
         "exited": false
     },
     "m_SelectedPriority": 0,
@@ -96,6 +96,18 @@
             "deviceId": "emulator-5554",
             "name": "com.MaorMisha.Alias",
             "processId": 15112,
+            "exited": false
+        },
+        {
+            "deviceId": "emulator-5554",
+            "name": "com.MaorMisha.Alias",
+            "processId": 9173,
+            "exited": false
+        },
+        {
+            "deviceId": "emulator-5554",
+            "name": "com.MaorMisha.Alias",
+            "processId": 11608,
             "exited": false
         }
     ],

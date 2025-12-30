@@ -45,7 +45,6 @@ public class SameRoomNetworkManager : MonoBehaviourPunCallbacks
         if (hostPopupPanel != null)
             hostPopupPanel.SetActive(true);
 
-        //StartCoroutine(FocusTMP(hostNameInput));//android system fix
     }
 
     // X or Cancel in host popup
@@ -129,7 +128,7 @@ public class SameRoomNetworkManager : MonoBehaviourPunCallbacks
     public override void OnJoinedRoom()
     {
         Debug.Log("Joined room: " + PhotonNetwork.CurrentRoom.Name);
-        PhotonNetwork.LoadLevel("SameRoomLobby");
+        PhotonNetwork.LoadLevel("SameRoomLobby_edit");//change new lobby
     }
 
     public override void OnJoinRoomFailed(short returnCode, string message)

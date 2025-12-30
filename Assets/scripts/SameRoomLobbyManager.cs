@@ -4,6 +4,7 @@ using Photon.Pun;
 using Photon.Realtime;
 using TMPro;
 using ExitGames.Client.Photon;
+using Photon.Pun.UtilityScripts;
 
 public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
 {
@@ -20,16 +21,17 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
     public TMP_Dropdown categoryDropdown;
 
     [Header("UI - Players Table")]
-    public Transform playersTableContent;
-    public GameObject playerRowPrefab;
+    public Transform teamTable;          // Reference to the UI container TeamTable
+    public GameObject teamColumnPrefab;  
+    public GameObject playerNamePrefab;
+    private List<TeamColumnUI> teamColumns = new List<TeamColumnUI>();
+    private const string TEAM_KEY = "team";
 
     [Header("UI - Start Game Button")]
     public GameObject startGameButton;   // assign in inspector
 
-    private Dictionary<Player, LobbyPlayerRow> playerRows =
-        new Dictionary<Player, LobbyPlayerRow>();
-
-    private const string TEAM_KEY = "team";
+    //private Dictionary<Player, LobbyPlayerRow> playerRows =
+        //new Dictionary<Player, LobbyPlayerRow>();
 
     // STATIC LOCK: This protects against duplicate scripts or double-clicks
     private static bool isGameStarting = false;
@@ -183,30 +185,46 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
 
     void ClearPlayersTable()
     {
-        foreach (Transform t in playersTableContent)
+        foreach (Transform t in teamTable)
             Destroy(t.gameObject);
-
-        playerRows.Clear();
     }
 
     void RefreshPlayersTable()
     {
         ClearPlayersTable();
 
+        teamColumns.Clear();
+
         int numTeams = AliasGameSettings.NumTeams;
+        for(int i = 0; i < numTeams; i++)
+        {
+            GameObject colObj = Instantiate(teamColumnPrefab, teamTable);//
+            TeamColumnUI col = colObj.GetComponent<TeamColumnUI>();//
+            col.Init(i, this);//
+            teamColumns.Add(col);//
+        }
+        int[] counts = new int[numTeams];
 
         foreach (Player p in PhotonNetwork.PlayerList)
         {
-            GameObject rowObj = Instantiate(playerRowPrefab, playersTableContent);
-            LobbyPlayerRow row = rowObj.GetComponent<LobbyPlayerRow>();
-            row.Init(p, this, numTeams);
-            playerRows[p] = row;
+            int teamIndex = GetPlayerTeam(p); 
+            if (teamIndex < 0 || teamIndex >= numTeams)
+                continue;
+
+            counts[teamIndex]++;
+
+            GameObject nameObj = Instantiate(playerNamePrefab, teamColumns[teamIndex].playersList);//
+            TMP_Text txt = nameObj.GetComponent<TMP_Text>();//
+            if (txt != null) txt.text = p.NickName;//
         }
+
+        for (int i = 0; i < numTeams; i++)
+            teamColumns[i].SetCount(counts[i]);
     }
 
-    public int GetPlayerTeam(Player p)
+    public int GetPlayerTeam(Player p)//
     {
-        if (p.CustomProperties.TryGetValue(TEAM_KEY, out object value))
+        if (p.CustomProperties.TryGetValue(TEAM_KEY, out object value)) // Does this player have a property with key "team"
         {
             if (value is int idx)
                 return idx;
@@ -216,9 +234,9 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
 
     public void OnLocalPlayerChooseTeam(int teamIndex)
     {
-        Hashtable props = new Hashtable();
-        props[TEAM_KEY] = teamIndex;
-        PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+        ExitGames.Client.Photon.Hashtable props = new ExitGames.Client.Photon.Hashtable(); 
+        props[TEAM_KEY] = teamIndex; //Stores the chosen team index in that dictionary under the key
+        PhotonNetwork.LocalPlayer.SetCustomProperties(props); //Publishes those properties to Photon so everyone sees that this player is now on that team.
     }
 
     // ---------- PHOTON CALLBACKS ----------
@@ -233,10 +251,10 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
         RefreshPlayersTable();
     }
 
-    public override void OnPlayerPropertiesUpdate(Player targetPlayer, Hashtable changedProps)
+    public override void OnPlayerPropertiesUpdate(Player targetPlayer, ExitGames.Client.Photon.Hashtable changedProps)//
     {
-        if (playerRows.TryGetValue(targetPlayer, out LobbyPlayerRow row))
-            row.UpdateTeamVisual();
+        if (changedProps.ContainsKey(TEAM_KEY))
+            RefreshPlayersTable();
     }
 
     // ---------- START GAME (STATIC LOCK VERSION) ----------

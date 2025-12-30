@@ -14,16 +14,22 @@ public class ForceKeyboard : MonoBehaviour, IPointerClickHandler
 
     void Update()
     {
-        // בדיקה קריטית: האם השדה הזה הוא האובייקט שנבחר כרגע ב-EventSystem?
-        bool isThisFieldSelected = EventSystem.current.currentSelectedGameObject == gameObject;
+        if (inputField == null) return;
+        if (keyboard == null) return;
 
-        if (isThisFieldSelected && keyboard != null && TouchScreenKeyboard.visible)
+        // If there is no EventSystem, don't crash
+        if (EventSystem.current == null) return;
+
+        bool isThisFieldSelected = (EventSystem.current.currentSelectedGameObject == gameObject);
+
+        // visible is safer than status on some platforms
+        if (isThisFieldSelected && TouchScreenKeyboard.visible)
         {
             inputField.text = keyboard.text;
         }
 
-        // אם המקלדת נסגרה, ננקה את המשתנה כדי שלא "ייזכר" לפעם הבאה
-        if (keyboard != null && !TouchScreenKeyboard.visible && keyboard.status != TouchScreenKeyboard.Status.Visible)
+        // When keyboard is not visible, just clear it (DON'T read keyboard.status)
+        if (!TouchScreenKeyboard.visible)
         {
             keyboard = null;
         }
@@ -31,15 +37,13 @@ public class ForceKeyboard : MonoBehaviour, IPointerClickHandler
 
     public void OnPointerClick(PointerEventData eventData)
     {
-        if (inputField != null)
-        {
-            // מסמנים למערכת שזה השדה הפעיל
-            EventSystem.current.SetSelectedGameObject(gameObject);
+        if (inputField == null) return;
+        if (EventSystem.current == null) return;
+        if (!TouchScreenKeyboard.isSupported) return;
 
-            inputField.ActivateInputField();
-            // פותחים את המקלדת עם הטקסט הקיים בשדה הספציפי הזה
-            keyboard = TouchScreenKeyboard.Open(inputField.text, TouchScreenKeyboardType.Default);
-        }
+        EventSystem.current.SetSelectedGameObject(gameObject);
+        inputField.ActivateInputField();
+        keyboard = TouchScreenKeyboard.Open(inputField.text, TouchScreenKeyboardType.Default);
     }
 }
 
