@@ -6195,7 +6195,7 @@ MonoBehaviour:
   roundTimeDropdown: {fileID: 1690660106}
   teamsDropdown: {fileID: 1052717806}
   settingsSummaryText: {fileID: 1485638471}
-  categoryDropdown: {fileID: 0}
+  categoryDropdown: {fileID: 1196361317}
   teamTable: {fileID: 2078798372}
   teamColumnPrefab: {fileID: 6989291217003456039, guid: aee6a3dafa7b1204bb27049845f4e023, type: 3}
   playerNamePrefab: {fileID: 7279036344771662785, guid: 71f1d4497dc3f8b4a847587aaf6f23cd, type: 3}

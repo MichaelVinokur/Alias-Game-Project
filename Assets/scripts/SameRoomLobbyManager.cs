@@ -69,6 +69,17 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
             categoryDropdown.onValueChanged.AddListener(OnCategoryChanged);
         }
 
+        var props = PhotonNetwork.CurrentRoom.CustomProperties;
+
+        if (props.ContainsKey("RoundTime"))
+            AliasGameSettings.RoundTimeSeconds = (int)props["RoundTime"];
+
+        if (props.ContainsKey("NumTeams"))
+            AliasGameSettings.NumTeams = (int)props["NumTeams"];
+
+        if (props.ContainsKey("Category"))
+            GameManager.Instance.SetCategory((int)props["Category"]);
+
         InitDropdownValues();
         UpdateSettingsSummaryLabel();
         RefreshPlayersTable();
@@ -154,6 +165,10 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
     // Save Settings
     public void OnApplySettingsButton()
     {
+        Debug.Log($"InRoom={PhotonNetwork.InRoom}, Room={(PhotonNetwork.CurrentRoom == null ? "NULL" : "OK")}");
+
+        if (!PhotonNetwork.IsMasterClient) return; // only host can change settings
+
         int newRoundTime = AliasGameSettings.RoundTimeSeconds;
         int newNumTeams = AliasGameSettings.NumTeams;
 
@@ -169,16 +184,34 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
             GameManager.Instance.SetCategory(selectedIndex);
         }
 
-        AliasGameSettings.RoundTimeSeconds = newRoundTime;
-        AliasGameSettings.NumTeams = newNumTeams;
+        Hashtable props = new Hashtable
+        {
+            { "RoundTime", newRoundTime },
+            { "NumTeams", newNumTeams },
+            { "Category", categoryDropdown.value }
+        };
+        PhotonNetwork.CurrentRoom.SetCustomProperties(props);
 
-        Debug.Log($"Settings applied! Time: {newRoundTime}, Teams: {newNumTeams}, Category Index: {categoryDropdown?.value}");
-
-        UpdateSettingsSummaryLabel();
-        RefreshPlayersTable();
 
         if (settingsPanel != null)
             settingsPanel.SetActive(false);
+    }
+
+    public override void OnRoomPropertiesUpdate(Hashtable changedProps) // change
+    {
+        if (changedProps.ContainsKey("RoundTime"))
+            AliasGameSettings.RoundTimeSeconds = (int)changedProps["RoundTime"];
+
+        if (changedProps.ContainsKey("NumTeams"))
+            AliasGameSettings.NumTeams = (int)changedProps["NumTeams"];
+
+        if (changedProps.ContainsKey("Category"))
+            GameManager.Instance.SetCategory((int)changedProps["Category"]);
+
+        InitDropdownValues();
+        UpdateSettingsSummaryLabel();
+        RefreshPlayersTable();
+        Debug.Log("Room props updated: " + changedProps.ToStringFull());
     }
 
     // ---------- PLAYERS TABLE ----------
@@ -294,10 +327,10 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
                 t.players.Add(info);
             }
         }
-        
-        // 5. Reset round state
-        GameManager.Instance.state.currentTeamIndex = 0;
-        GameManager.Instance.state.nextTeamIndex = 0;
+        PhotonNetwork.CurrentRoom.SetCustomProperties(new ExitGames.Client.Photon.Hashtable
+        {
+            { "NextTeamIndex", 0 }
+        });
 
         // 6. Load scoreboard (ONCE)
         PhotonNetwork.LoadLevel("ScoreboardScene");

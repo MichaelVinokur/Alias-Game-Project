@@ -37,12 +37,11 @@ public class RoundManager : MonoBehaviourPunCallbacks
             Debug.LogWarning("Not connected to Photon! Working in offline mode.");
         }
 
-        // סנכרון הקטגוריה לכל השחקנים בחדר
-        int selectedIdx = GameManager.Instance.state.selectedCategoryIndex;
-        GameManager.Instance.SetCategory(selectedIdx);
+        ApplyRoomSettings();
+        if (!PhotonNetwork.InRoom) return;
 
         teamIndex = GameManager.Instance.NextTeamIndex;
-        timer = GameManager.Instance.RoundSeconds;
+        timer = AliasGameSettings.RoundTimeSeconds;
         running = true;
 
         // רק ה-Master Client מוודא שהמשחק מתחיל לספור
@@ -54,6 +53,25 @@ public class RoundManager : MonoBehaviourPunCallbacks
         PickReader();
         SetupButtons();
         UpdateUIVisibility();
+    }
+
+    void ApplyRoomSettings()
+    {
+        if (!PhotonNetwork.InRoom) return;
+
+        var props = PhotonNetwork.CurrentRoom.CustomProperties;
+
+        if (props.TryGetValue("RoundTime", out var rt))
+            AliasGameSettings.RoundTimeSeconds = (int)rt;
+
+        if (props.TryGetValue("NumTeams", out var nt))
+            AliasGameSettings.NumTeams = (int)nt;
+
+        if (props.TryGetValue("Category", out var cat))
+            GameManager.Instance.SetCategory((int)cat);
+
+        if (props.TryGetValue("NextTeamIndex", out var nti))
+            GameManager.Instance.NextTeamIndex = (int)nti;
     }
 
     void Update()
@@ -204,15 +222,21 @@ public class RoundManager : MonoBehaviourPunCallbacks
     void EndRound()
     {
         running = false;
-
-        // Move to next team for the NEXT round
-        GameManager.Instance.NextTeamIndex++;
-        if (GameManager.Instance.NextTeamIndex >= GameManager.Instance.teams.Count)
-            GameManager.Instance.NextTeamIndex = 0;
-
-        // Load Scoreboard
+        if (!PhotonNetwork.IsMasterClient)
+            return;
+        //maybe duplicity need to check.
         if (PhotonNetwork.IsMasterClient)
         {
+            int next = GameManager.Instance.NextTeamIndex + 1;
+            if (next >= GameManager.Instance.teams.Count) next = 0; //modulo on team order
+
+            GameManager.Instance.NextTeamIndex = next;
+
+            PhotonNetwork.CurrentRoom.SetCustomProperties(new ExitGames.Client.Photon.Hashtable
+            {
+                { "NextTeamIndex", next }
+            });
+
             PhotonNetwork.LoadLevel("ScoreboardScene");
         }
     }
