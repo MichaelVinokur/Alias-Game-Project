@@ -2,9 +2,13 @@ using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using Photon.Pun;
+
 
 public class ScoreboardManager : MonoBehaviour
 {
+    private PhotonView pv;
+
     public Transform teamsListContainer;
     public GameObject teamCardPrefab;
 
@@ -13,6 +17,10 @@ public class ScoreboardManager : MonoBehaviour
 
     private void Start()
     {
+        if (startRoundButton != null)
+        {
+            startRoundButton.gameObject.SetActive(PhotonNetwork.IsMasterClient);
+        }
         // 1. SAFETY FIX: If no teams exist, create them
         if (GameManager.Instance.teams == null || GameManager.Instance.teams.Count == 0)
         {
@@ -72,23 +80,47 @@ public class ScoreboardManager : MonoBehaviour
         }
     }
 
+    void Awake() {
+        pv = GetComponent<PhotonView>();
+    }
+
     private void SetupStartButton()
-{
-    int nextIndex = GameManager.Instance.NextTeamIndex;
-
-    // SAFETY FIX
-    if (nextIndex < 0 || nextIndex >= GameManager.Instance.teams.Count)
-        nextIndex = 0;
-
-    nextTeamLabel.text = "Next Team: " + GameManager.Instance.teams[nextIndex].teamName;
-
-    startRoundButton.transform.GetChild(0)
-        .GetComponent<TMP_Text>().text = "Start Round: " + GameManager.Instance.teams[nextIndex].teamName;
-
-    startRoundButton.onClick.AddListener(() =>
     {
-        UnityEngine.SceneManagement.SceneManager.LoadScene("RoundScene");
-    });
-}
+        int nextIndex = GameManager.Instance.NextTeamIndex;
 
+        // SAFETY FIX
+        if (nextIndex < 0 || nextIndex >= GameManager.Instance.teams.Count)
+            nextIndex = 0;
+
+        nextTeamLabel.text = "Next Team: " + GameManager.Instance.teams[nextIndex].teamName;
+
+        startRoundButton.transform.GetChild(0)
+            .GetComponent<TMP_Text>().text = "Start Round: " + GameManager.Instance.teams[nextIndex].teamName;
+
+        startRoundButton.onClick.AddListener(() =>
+        {
+            int teamToPlay = GameManager.Instance.NextTeamIndex;
+            pv.RPC("RPC_StartRoundForTeam", RpcTarget.All, teamToPlay);
+        });
+    }
+
+    public int GetPlayerTeam(Photon.Realtime.Player p)
+    {
+        if (p.CustomProperties.TryGetValue("team", out object value)) 
+        {
+            if (value is int idx)
+                return idx;
+        }
+        return -1;
+    }
+
+    [PunRPC]
+    void RPC_StartRoundForTeam(int teamIndex)
+    {
+        int myTeam = GetPlayerTeam(PhotonNetwork.LocalPlayer);
+        if (myTeam == teamIndex)
+        {
+            SceneManager.LoadScene("RoundScene");
+        }
+    }
 }

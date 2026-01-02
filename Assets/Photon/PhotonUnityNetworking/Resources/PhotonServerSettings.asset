@@ -42,6 +42,8 @@ MonoBehaviour:
   - RPC_NewWord
   - RPC_SetWord
   - RPC_GameOver
+  - RPC_StartRoundForTeam
+  - RPC_SyncReader
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 1

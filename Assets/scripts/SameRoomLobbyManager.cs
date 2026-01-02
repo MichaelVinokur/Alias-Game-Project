@@ -12,6 +12,8 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
     public TMP_Text roomCodeText;
 
     [Header("UI - Settings Window")]
+    
+    public GameObject settingsButton;
     public GameObject settingsPanel;
     public TMP_Dropdown roundTimeDropdown;
     public TMP_Dropdown teamsDropdown;
@@ -91,6 +93,14 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
              startGameButton.GetComponent<UnityEngine.UI.Button>().onClick.RemoveAllListeners();
              startGameButton.GetComponent<UnityEngine.UI.Button>().onClick.AddListener(StartGame);
         }
+
+        bool isHost = PhotonNetwork.IsMasterClient;
+
+        if (startGameButton != null) 
+            startGameButton.SetActive(isHost);
+
+        if (settingsButton != null) 
+            settingsButton.SetActive(isHost);
     }
 
     void OnCategoryChanged(int index)
@@ -334,5 +344,14 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
 
         // 6. Load scoreboard (ONCE)
         PhotonNetwork.LoadLevel("ScoreboardScene");
+    }
+
+    public override void OnMasterClientSwitched(Player newMasterClient)
+    {
+        if (PhotonNetwork.LocalPlayer.IsMasterClient)
+        {
+            if (startGameButton != null) startGameButton.SetActive(true);
+            if (settingsButton != null) settingsButton.SetActive(true);
+        }
     }
 }
