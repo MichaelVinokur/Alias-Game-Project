@@ -12,6 +12,9 @@ EditorBuildSettings:
     path: Assets/Scenes/SameRoom.unity
     guid: 87009cf14d2a7e04daeec5d0551b9494
   - enabled: 1
+    path: Assets/Scenes/LoadingScene.unity
+    guid: 92ec61027ea65d5469fa3dfd6de2ca24
+  - enabled: 1
     path: Assets/Scenes/SameRoomLobby.unity
     guid: 55db8e41382048e468630788db2d6c9e
   - enabled: 1

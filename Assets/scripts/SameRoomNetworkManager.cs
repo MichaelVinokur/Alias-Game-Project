@@ -3,6 +3,7 @@ using Photon.Realtime;
 using UnityEngine;
 using System.Collections;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 
 public class SameRoomNetworkManager : MonoBehaviourPunCallbacks
 {
@@ -18,8 +19,12 @@ public class SameRoomNetworkManager : MonoBehaviourPunCallbacks
     public TMPro.TMP_InputField joinCodeInput;   // code field inside join popup
     public TMPro.TMP_InputField joinNameInput;   // name field inside join popup
 
+    private static bool isHosting; //for loading scene
+    private static string savedName; //for loading scene
+    private static string savedCode; //for loading scene
     void Start()
     {
+        DontDestroyOnLoad(this.gameObject); //for loading scene
         // hide both popups at the start
         if (hostPopupPanel != null) hostPopupPanel.SetActive(false);
         if (joinPopupPanel != null) joinPopupPanel.SetActive(false);
@@ -28,6 +33,17 @@ public class SameRoomNetworkManager : MonoBehaviourPunCallbacks
         {
             PhotonNetwork.AutomaticallySyncScene = true;
             PhotonNetwork.ConnectUsingSettings();
+        }
+    }
+
+    void OnLevelWasLoaded(int level) // loading scene 
+    {
+        if (SceneManager.GetActiveScene().name == "LoadingScene")
+        {
+            if (isHosting) 
+                ExecuteHostLogic();
+            else 
+                ExecuteJoinLogic();
         }
     }
 
@@ -57,27 +73,22 @@ public class SameRoomNetworkManager : MonoBehaviourPunCallbacks
     // "Create Game" button inside host popup
     public void OnHostCreateGame()
     {
-        string playerName = hostNameInput.text.Trim();
-        if (string.IsNullOrEmpty(playerName))
-        {
-            Debug.LogWarning("Host name empty");
-            return;
-        }
+        savedName = hostNameInput.text.Trim();
+        if (string.IsNullOrEmpty(savedName)) return;
 
-        PhotonNetwork.NickName = playerName;
+        isHosting = true;
+        SceneManager.LoadScene("LoadingScene"); 
+    }
 
-        // random 6-digit code
+    private void ExecuteHostLogic()
+    {
+        PhotonNetwork.NickName = savedName;
         string roomCode = Random.Range(100000, 999999).ToString();
         RoomOptions options = new RoomOptions { MaxPlayers = 8 };
-
-        Debug.Log("Creating room: " + roomCode);
         PhotonNetwork.CreateRoom(roomCode, options);
 
         if (hostCodeText != null)
             hostCodeText.text = "Code: " + roomCode;
-
-        hostPopupPanel.SetActive(false);
-        Debug.Log("Connected to Region: " + PhotonNetwork.CloudRegion);
     }
 
     // ================= JOINER FLOW =================
@@ -99,28 +110,19 @@ public class SameRoomNetworkManager : MonoBehaviourPunCallbacks
     // "Join Game" button inside join popup
     public void OnJoinConfirm()
     {
-        string code = joinCodeInput.text.Trim();
-        string playerName = joinNameInput.text.Trim();
+        savedCode = joinCodeInput.text.Trim();
+        savedName = joinNameInput.text.Trim();
 
-        if (string.IsNullOrEmpty(code))
-        {
-            Debug.LogWarning("Join code empty");
-            return;
-        }
+        if (string.IsNullOrEmpty(savedCode) || string.IsNullOrEmpty(savedName)) return;
 
-        if (string.IsNullOrEmpty(playerName))
-        {
-            Debug.LogWarning("Join name empty");
-            return;
-        }
+        isHosting = false;
+        SceneManager.LoadScene("LoadingScene");
+    }
 
-        PhotonNetwork.NickName = playerName;
-
-        Debug.Log("Joining room: " + code);
-        PhotonNetwork.JoinRoom(code); // chacks the code that was provided is correct
-
-        joinPopupPanel.SetActive(false);
-        Debug.Log("Connected to Region: " + PhotonNetwork.CloudRegion);
+    private void ExecuteJoinLogic()
+    {
+        PhotonNetwork.NickName = savedName;
+        PhotonNetwork.JoinRoom(savedCode);
     }
 
     // ================= PHOTON CALLBACKS =================
@@ -134,11 +136,13 @@ public class SameRoomNetworkManager : MonoBehaviourPunCallbacks
     public override void OnJoinRoomFailed(short returnCode, string message)
     {
         Debug.LogWarning("Join failed: " + message);
+        SceneManager.LoadScene("SameRoom");
     }
 
     public override void OnCreateRoomFailed(short returnCode, string message)
     {
         Debug.LogWarning("Create room failed: " + message);
+        SceneManager.LoadScene("SameRoom");
     }
 
     //fix for android studio
