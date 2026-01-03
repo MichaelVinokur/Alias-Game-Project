@@ -1,8 +1,0 @@
-C:/AliasProject/AliasBGU/.utmp/Debug/6s403v13/x86_64/CMakeFiles/edit_cache.dir
-C:/AliasProject/AliasBGU/.utmp/Debug/6s403v13/x86_64/CMakeFiles/rebuild_cache.dir
-C:/AliasProject/AliasBGU/.utmp/Debug/6s403v13/x86_64/GameActivity/CMakeFiles/game.dir
-C:/AliasProject/AliasBGU/.utmp/Debug/6s403v13/x86_64/GameActivity/CMakeFiles/edit_cache.dir
-C:/AliasProject/AliasBGU/.utmp/Debug/6s403v13/x86_64/GameActivity/CMakeFiles/rebuild_cache.dir
-C:/AliasProject/AliasBGU/.utmp/Debug/6s403v13/x86_64/FramePacing/CMakeFiles/swappywrapper.dir
-C:/AliasProject/AliasBGU/.utmp/Debug/6s403v13/x86_64/FramePacing/CMakeFiles/edit_cache.dir
-C:/AliasProject/AliasBGU/.utmp/Debug/6s403v13/x86_64/FramePacing/CMakeFiles/rebuild_cache.dir

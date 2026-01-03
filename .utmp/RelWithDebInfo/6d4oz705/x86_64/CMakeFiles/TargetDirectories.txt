@@ -1,8 +1,0 @@
-C:/src/MyProjectsUnity/Alias/.utmp/RelWithDebInfo/6d4oz705/x86_64/CMakeFiles/edit_cache.dir
-C:/src/MyProjectsUnity/Alias/.utmp/RelWithDebInfo/6d4oz705/x86_64/CMakeFiles/rebuild_cache.dir
-C:/src/MyProjectsUnity/Alias/.utmp/RelWithDebInfo/6d4oz705/x86_64/GameActivity/CMakeFiles/game.dir
-C:/src/MyProjectsUnity/Alias/.utmp/RelWithDebInfo/6d4oz705/x86_64/GameActivity/CMakeFiles/edit_cache.dir
-C:/src/MyProjectsUnity/Alias/.utmp/RelWithDebInfo/6d4oz705/x86_64/GameActivity/CMakeFiles/rebuild_cache.dir
-C:/src/MyProjectsUnity/Alias/.utmp/RelWithDebInfo/6d4oz705/x86_64/FramePacing/CMakeFiles/swappywrapper.dir
-C:/src/MyProjectsUnity/Alias/.utmp/RelWithDebInfo/6d4oz705/x86_64/FramePacing/CMakeFiles/edit_cache.dir
-C:/src/MyProjectsUnity/Alias/.utmp/RelWithDebInfo/6d4oz705/x86_64/FramePacing/CMakeFiles/rebuild_cache.dir
