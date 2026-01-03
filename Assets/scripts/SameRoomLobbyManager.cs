@@ -333,7 +333,7 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
             if (teamIndex < GameManager.Instance.teams.Count)
             {
                 TeamInfo t = GameManager.Instance.teams[teamIndex];
-                PlayerInfo info = new PlayerInfo(p.UserId, p.NickName);
+                PlayerInfo info = new PlayerInfo(p.ActorNumber.ToString(), p.NickName);
                 t.players.Add(info);
             }
         }
@@ -343,7 +343,7 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
         });
 
         // 6. Load scoreboard (ONCE)
-        PhotonNetwork.LoadLevel("ScoreboardScene");
+        PhotonNetwork.LoadLevel("GameScene");
     }
 
     public override void OnMasterClientSwitched(Player newMasterClient)

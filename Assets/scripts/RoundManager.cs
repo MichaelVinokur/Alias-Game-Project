@@ -4,6 +4,8 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using Photon.Pun;
 using System.Collections.Generic;
+using System.Linq;
+
 
 public class RoundManager : MonoBehaviourPunCallbacks
 {
@@ -25,32 +27,50 @@ public class RoundManager : MonoBehaviourPunCallbacks
     private int teamIndex;
     private int readerIndex;
     private bool isReader = false;
+    
 
-    void Start()
+   void Start()
     {
-        // SAFETY CHECK: Ensure GameManager exists
-        if (GameManager.Instance == null) return;
+        if (!PhotonNetwork.InRoom || GameManager.Instance == null)
+            return;
 
-        if (!PhotonNetwork.IsConnected)
-        {
-            Debug.LogWarning("Not connected to Photon! Working in offline mode.");
-        }
+        var props = PhotonNetwork.CurrentRoom.CustomProperties;
 
-        ApplyRoomSettings();
-        if (!PhotonNetwork.InRoom) return;
+        if (!props.TryGetValue("Phase", out var phaseObj) || (string)phaseObj != "Round")
+            return;
 
-        teamIndex = GameManager.Instance.NextTeamIndex;
-        timer = AliasGameSettings.RoundTimeSeconds;
-        running = true;
+        if (!props.TryGetValue("ActiveTeam", out var activeObj))
+            return;
 
+        int activeTeam = (int)activeObj;
+        int myTeam = GetPlayerTeam(PhotonNetwork.LocalPlayer);
+
+        teamIndex = activeTeam;
+
+        // ✅ Master always runs the timer
         if (PhotonNetwork.IsMasterClient)
         {
-            Debug.Log("Master Client initialized the round.");
+            timer = AliasGameSettings.RoundTimeSeconds;
+            running = true;
+
+            PickReader(); // master selects reader
         }
 
-        PickReader();
-        SetupButtons();
-        UpdateUIVisibility();
+        // ✅ Only playing team sets up UI/buttons
+        if (myTeam == activeTeam)
+        {
+            SetupButtons();
+            UpdateUIVisibility();
+        }
+    }
+
+
+    int GetPlayerTeam(Photon.Realtime.Player p)
+    {
+        if (p.CustomProperties.TryGetValue("team", out object value))
+            return (int)value;
+
+        return -1;
     }
 
     void ApplyRoomSettings()
@@ -74,15 +94,12 @@ public class RoundManager : MonoBehaviourPunCallbacks
 
     void Update()
     {
+        if (!PhotonNetwork.IsMasterClient) return;  // ✅ ONLY master counts time
         if (!running) return;
 
         timer -= Time.deltaTime;
-        if(timerText != null) 
+        if (timerText != null)
             timerText.text = Mathf.Ceil(timer).ToString();
-
-        // Optional: Simple vibration
-        if (timer <= 10f && timer > 9.9f) 
-            Handheld.Vibrate();
 
         if (timer <= 0f)
             EndRound();
@@ -90,39 +107,44 @@ public class RoundManager : MonoBehaviourPunCallbacks
 
     void PickReader()
     {
-        if (GameManager.Instance.teams == null || teamIndex >= GameManager.Instance.teams.Count) return;
+        if (!PhotonNetwork.IsMasterClient) return;
 
         var team = GameManager.Instance.teams[teamIndex];
         if (team.players.Count == 0) return;
 
-        if (PhotonNetwork.IsMasterClient)
-        {
-            int chosenIndex = Random.Range(0, team.players.Count);
-            photonView.RPC("RPC_SyncReader", RpcTarget.All, chosenIndex);
-        }
+        int i = Random.Range(0, team.players.Count);
+
+        int readerActorNumber = int.Parse(team.players[i].playerId);
+        photonView.RPC("RPC_SyncReader", RpcTarget.All, readerActorNumber);
     }
 
-    [PunRPC]
-    void RPC_SyncReader(int indexFromServer)
-    {
-        readerIndex = indexFromServer;
-        var team = GameManager.Instance.teams[teamIndex];
-        
-        var readerInfo = team.players[readerIndex];
-        
-        if (playerNameText) 
-            playerNameText.text = $"{readerInfo.nickname} is reading";
 
-        isReader = (PhotonNetwork.LocalPlayer.NickName == readerInfo.nickname);
+    [PunRPC]
+    void RPC_SyncReader(int readerActorNumber)
+    {
+        var reader = PhotonNetwork.CurrentRoom.GetPlayer(readerActorNumber);
+
+        if (reader == null)
+        {
+            Debug.LogError("Reader not found in room!");
+            return;
+        }
+
+        if (playerNameText)
+            playerNameText.text = reader.NickName + " is reading";
+
+        isReader = PhotonNetwork.LocalPlayer.ActorNumber == readerActorNumber;
 
         UpdateUIVisibility();
 
-        if (isReader) 
+        if (isReader)
         {
             string w = GameManager.Instance.GetRandomWord();
             photonView.RPC("RPC_SetWord", RpcTarget.All, w);
         }
-    }
+}
+
+
 
     void UpdateUIVisibility()
     {
@@ -198,36 +220,55 @@ public class RoundManager : MonoBehaviourPunCallbacks
         }
     }
 
-    [PunRPC] // the function can be sent over the network
+    [PunRPC]
     void RPC_GameOver()
     {
         running = false;
-        Debug.Log("The game has ended! Moving to Scoreboard...");
+
         if (PhotonNetwork.IsMasterClient)
         {
-            PhotonNetwork.LoadLevel("EndGameScene"); // transfers everybody to EndGame. importent only masterclient sends this.
+            PhotonNetwork.CurrentRoom.SetCustomProperties(new ExitGames.Client.Photon.Hashtable
+            {
+                { "Phase", "GameOver" }
+            });
         }
     }
+
 
     void EndRound()
     {
         running = false;
+
         if (!PhotonNetwork.IsMasterClient)
             return;
-        //maybe duplicity need to check.
-        if (PhotonNetwork.IsMasterClient)
+
+        int next = GameManager.Instance.NextTeamIndex + 1;
+        if (next >= GameManager.Instance.teams.Count)
+            next = 0;
+
+        GameManager.Instance.NextTeamIndex = next;
+
+        PhotonNetwork.CurrentRoom.SetCustomProperties(new ExitGames.Client.Photon.Hashtable
         {
-            int next = GameManager.Instance.NextTeamIndex + 1;
-            if (next >= GameManager.Instance.teams.Count) next = 0; //modulo on team order
+            { "Phase", "Scoreboard" },
+            { "NextTeamIndex", next },
+            { "ActiveTeam", -1 }
+        });
+    }
 
-            GameManager.Instance.NextTeamIndex = next;
+    public override void OnRoomPropertiesUpdate(ExitGames.Client.Photon.Hashtable changedProps)
+    {
+        if (changedProps.ContainsKey("Phase"))
+        {
+            string phase = (string)changedProps["Phase"];
 
-            PhotonNetwork.CurrentRoom.SetCustomProperties(new ExitGames.Client.Photon.Hashtable
+            // If round ended, stop the round on ALL phones
+            if (phase != "Round")
             {
-                { "NextTeamIndex", next }
-            });
-
-            PhotonNetwork.LoadLevel("ScoreboardScene");
+                running = false;
+                gameObject.SetActive(false);
+            }
         }
     }
+
 }

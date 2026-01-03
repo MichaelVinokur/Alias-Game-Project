@@ -144,7 +144,16 @@ public class GameManager : MonoBehaviour
 
     public void AddCorrectPoint(int teamIndex)
     {
-        teams[teamIndex].AddScore(+1);
+        // עדכון מקומי
+        teams[teamIndex].score++;
+
+        // עדכון רשת - רק ה-MasterClient או המקריא מעדכנים
+        if (Photon.Pun.PhotonNetwork.IsMasterClient || Photon.Pun.PhotonNetwork.LocalPlayer.IsLocal)
+        {
+            ExitGames.Client.Photon.Hashtable props = new ExitGames.Client.Photon.Hashtable();
+            props.Add("Score_" + teamIndex, teams[teamIndex].score);
+            Photon.Pun.PhotonNetwork.CurrentRoom.SetCustomProperties(props);
+        }
     }
 
     public void AddPenalty(int teamIndex)
