@@ -3,112 +3,65 @@ using TMPro;
 using UnityEngine.UI;
 using Photon.Pun;
 using ExitGames.Client.Photon;
+using System.Linq;
+using System.Collections;
 
 public class ScoreboardManager : MonoBehaviourPunCallbacks
 {
-    public GameObject scoreboardPanel;
-    public GameObject roundPanel;
-
+    [Header("UI")]
     public Transform teamsListContainer;
     public GameObject teamCardPrefab;
 
     public TMP_Text nextTeamLabel;
     public Button startRoundButton;
 
-    private void Start()
+    void Awake()
     {
+        Debug.Log("[SBM] Awake");
+    }
+
+    void Start()
+    {
+        Debug.Log($"[SBM] Start activeSelf={gameObject.activeSelf} inRoom={PhotonNetwork.InRoom} isMaster={PhotonNetwork.IsMasterClient}");
+
         if (startRoundButton)
             startRoundButton.gameObject.SetActive(PhotonNetwork.IsMasterClient);
 
-        // SAFETY: ensure teams exist
-        if (GameManager.Instance.teams == null || GameManager.Instance.teams.Count == 0)
+        // Ensure teams exist
+        if (GameManager.Instance != null && (GameManager.Instance.teams == null || GameManager.Instance.teams.Count == 0))
         {
             GameManager.Instance.InitializeTeams(AliasGameSettings.NumTeams);
         }
 
-        if (GameManager.Instance.NextTeamIndex >= GameManager.Instance.teams.Count)
-            GameManager.Instance.NextTeamIndex = 0;
+        if (GameManager.Instance != null && GameManager.Instance.teams != null && GameManager.Instance.teams.Count > 0)
+        {
+            if (GameManager.Instance.NextTeamIndex >= GameManager.Instance.teams.Count)
+                GameManager.Instance.NextTeamIndex = 0;
+        }
 
         BuildScoreboardUI();
         SetupStartButton();
-        RefreshPanels();
-        UpdateStartButtonText();
-
+        UpdateScoreboardTextFromRoom();
     }
 
-    public override void OnRoomPropertiesUpdate(Hashtable propertiesThatChanged)
+    public override void OnRoomPropertiesUpdate(ExitGames.Client.Photon.Hashtable changedProps)
     {
-        // Always update panels (Scoreboard ↔ Round)
-        RefreshPanels();
+        // Print what changed + current full state
+        Debug.Log("[SBM] OnRoomPropertiesUpdate changedKeys=" +
+                  string.Join(",", changedProps.Keys.Cast<object>().Select(k => k.ToString())));
 
-        // If we returned to scoreboard, rebuild scores & players
-        if (propertiesThatChanged.ContainsKey("Phase") &&
-            (string)propertiesThatChanged["Phase"] == "Scoreboard")
+        // Update UI when relevant keys change
+        if (changedProps.ContainsKey("Phase") ||
+            changedProps.ContainsKey("ActiveTeam") ||
+            changedProps.ContainsKey("NextTeamIndex"))
         {
-            BuildScoreboardUI();
-             UpdateStartButtonText();
-        }
+            // If round ended and we returned to scoreboard, rebuild scores
+            if (changedProps.TryGetValue("Phase", out var ph) && (string)ph == "Scoreboard")
+                BuildScoreboardUI();
 
-        // If next team changed, update labels & button text
-        if (propertiesThatChanged.ContainsKey("NextTeamIndex"))
-        {
-            int next = (int)propertiesThatChanged["NextTeamIndex"];
-
-            nextTeamLabel.text =
-                "Next Team: " + GameManager.Instance.teams[next].teamName;
-
-            if (PhotonNetwork.IsMasterClient && startRoundButton != null)
-            {
-                startRoundButton.transform.GetChild(0)
-                    .GetComponent<TMP_Text>().text =
-                    "Start Round: " + GameManager.Instance.teams[next].teamName;
-            }
+            UpdateScoreboardTextFromRoom();
         }
     }
-
-
-    void RefreshPanels()
-    {
-        string phase = "Scoreboard";
-        int activeTeam = GameManager.Instance.NextTeamIndex;
-
-        if (PhotonNetwork.InRoom)
-        {
-            var props = PhotonNetwork.CurrentRoom.CustomProperties;
-            if (props.TryGetValue("Phase", out var p)) phase = (string)p;
-            if (props.TryGetValue("ActiveTeam", out var t)) activeTeam = (int)t;
-            if (props.TryGetValue("NextTeamIndex", out var nti))
-                GameManager.Instance.NextTeamIndex = (int)nti;
-        }
-
-        int myTeam = GetPlayerTeam(PhotonNetwork.LocalPlayer);
-
-        bool iAmPlaying = (phase == "Round" && myTeam == activeTeam);
-
-        // Only the playing team sees the round panel
-        scoreboardPanel.SetActive(!iAmPlaying);
-        roundPanel.SetActive(iAmPlaying);
-
-        if (nextTeamLabel)
-        {
-            nextTeamLabel.text =
-                phase == "Scoreboard"
-                ? "Next Team: " + GameManager.Instance.teams[GameManager.Instance.NextTeamIndex].teamName
-                : "Currently playing: " + GameManager.Instance.teams[activeTeam].teamName;
-        }
-    }
-
-
-    void UpdateStartButtonText()
-    {
-        if (!startRoundButton || !PhotonNetwork.IsMasterClient) return;
-
-        startRoundButton.transform.GetChild(0)
-            .GetComponent<TMP_Text>().text =
-            "Start Round: " +
-            GameManager.Instance.teams[GameManager.Instance.NextTeamIndex].teamName;
-    }
-
 
     void SetupStartButton()
     {
@@ -118,34 +71,84 @@ public class ScoreboardManager : MonoBehaviourPunCallbacks
         startRoundButton.onClick.AddListener(() =>
         {
             if (!PhotonNetwork.IsMasterClient) return;
+            if (!PhotonNetwork.InRoom) return;
 
             int teamToPlay = GameManager.Instance.NextTeamIndex;
 
-            PhotonNetwork.CurrentRoom.SetCustomProperties(new Hashtable
+            var ht = new ExitGames.Client.Photon.Hashtable
             {
                 { "Phase", "Round" },
                 { "ActiveTeam", teamToPlay }
-            });
+            };
+
+            bool ok = PhotonNetwork.CurrentRoom.SetCustomProperties(ht);
         });
     }
 
-    int GetPlayerTeam(Photon.Realtime.Player p)
+
+    void UpdateScoreboardTextFromRoom()
     {
-        if (p.CustomProperties.TryGetValue("team", out object value))
-            return (int)value;
-        return -1;
+        if (!PhotonNetwork.InRoom) return;
+        if (GameManager.Instance == null || GameManager.Instance.teams == null || GameManager.Instance.teams.Count == 0) return;
+
+        var props = PhotonNetwork.CurrentRoom.CustomProperties;
+
+        string phase = props.TryGetValue("Phase", out var p) ? (string)p : "Scoreboard";
+        int activeTeam = props.TryGetValue("ActiveTeam", out var a) ? (int)a : -1;
+
+        if (props.TryGetValue("NextTeamIndex", out var nti))
+            GameManager.Instance.NextTeamIndex = (int)nti;
+
+        int next = GameManager.Instance.NextTeamIndex;
+        string nextName = GameManager.Instance.teams[next].teamName;
+
+        if (phase == "Round" && activeTeam >= 0 && activeTeam < GameManager.Instance.teams.Count)
+        {
+            nextTeamLabel.text = "Currently playing: " + GameManager.Instance.teams[activeTeam].teamName;
+        }
+        else
+        {
+            nextTeamLabel.text = "Next Team: " + nextName;
+        }
+
+        if (PhotonNetwork.IsMasterClient && startRoundButton)
+        {
+            startRoundButton.transform.GetChild(0).GetComponent<TMP_Text>().text =
+                "Start Round: " + nextName;
+        }
     }
 
     void BuildScoreboardUI()
     {
+        if (teamsListContainer == null || teamCardPrefab == null)
+        {
+            Debug.LogWarning("[SBM] Missing teamsListContainer or teamCardPrefab");
+            return;
+        }
+
+        if (GameManager.Instance == null || GameManager.Instance.teams == null)
+        {
+            Debug.LogWarning("[SBM] GameManager teams not ready");
+            return;
+        }
+
+        Debug.Log($"[SBM] BuildScoreboardUI teams={GameManager.Instance.teams.Count} before={teamsListContainer.childCount}");
+
         foreach (Transform t in teamsListContainer)
             Destroy(t.gameObject);
 
         foreach (var team in GameManager.Instance.teams)
         {
             GameObject card = Instantiate(teamCardPrefab, teamsListContainer);
-            card.transform.Find("TeamName").GetComponent<TMP_Text>().text = team.teamName;
-            card.transform.Find("ScoreText").GetComponent<TMP_Text>().text = "Score: " + team.score;
+
+            var name = card.transform.Find("TeamName")?.GetComponent<TMP_Text>();
+            var score = card.transform.Find("ScoreText")?.GetComponent<TMP_Text>();
+
+            if (name) name.text = team.teamName;
+            if (score) score.text = "Score: " + team.score;
         }
+
+        Debug.Log($"[SBM] BuildScoreboardUI after={teamsListContainer.childCount}");
     }
+
 }

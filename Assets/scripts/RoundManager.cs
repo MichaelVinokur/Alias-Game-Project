@@ -62,6 +62,7 @@ public class RoundManager : MonoBehaviourPunCallbacks
             SetupButtons();
             UpdateUIVisibility();
         }
+        Debug.Log($"[RM] Start running. activeSelf={gameObject.activeSelf} room={PhotonNetwork.InRoom}");
     }
 
 
@@ -71,25 +72,6 @@ public class RoundManager : MonoBehaviourPunCallbacks
             return (int)value;
 
         return -1;
-    }
-
-    void ApplyRoomSettings()
-    {
-        if (!PhotonNetwork.InRoom) return;
-
-        var props = PhotonNetwork.CurrentRoom.CustomProperties;
-
-        if (props.TryGetValue("RoundTime", out var rt))
-            AliasGameSettings.RoundTimeSeconds = (int)rt;
-
-        if (props.TryGetValue("NumTeams", out var nt))
-            AliasGameSettings.NumTeams = (int)nt;
-
-        if (props.TryGetValue("Category", out var cat))
-            GameManager.Instance.SetCategory((int)cat);
-
-        if (props.TryGetValue("NextTeamIndex", out var nti))
-            GameManager.Instance.NextTeamIndex = (int)nti;
     }
 
     void Update()
@@ -258,17 +240,21 @@ public class RoundManager : MonoBehaviourPunCallbacks
 
     public override void OnRoomPropertiesUpdate(ExitGames.Client.Photon.Hashtable changedProps)
     {
-        if (changedProps.ContainsKey("Phase"))
-        {
-            string phase = (string)changedProps["Phase"];
+        if (!changedProps.ContainsKey("Phase")) return;
 
-            // If round ended, stop the round on ALL phones
-            if (phase != "Round")
-            {
-                running = false;
-                gameObject.SetActive(false);
-            }
+        string phase = (string)changedProps["Phase"];
+
+        if (phase == "Round")
+        {
+            // re-init round for all clients
+            enabled = true;
+            Start(); // simplest for now (later we’ll extract InitRound())
+            return;
         }
+
+        // leaving round
+        if (phase != "Round")
+            running = false;
     }
 
 }
