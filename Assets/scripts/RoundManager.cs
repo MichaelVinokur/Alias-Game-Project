@@ -28,6 +28,7 @@ public class RoundManager : MonoBehaviourPunCallbacks
     private int readerIndex;
     private bool isReader = false;
     
+    private float nextTimerSync;
 
    void Start()
     {
@@ -38,6 +39,7 @@ public class RoundManager : MonoBehaviourPunCallbacks
 
     int GetPlayerTeam(Photon.Realtime.Player p)
     {
+       
         if (p.CustomProperties.TryGetValue("team", out object value))
             return (int)value;
 
@@ -46,16 +48,40 @@ public class RoundManager : MonoBehaviourPunCallbacks
 
     void Update()
     {
-        if (!PhotonNetwork.IsMasterClient) return;  
+        
+        if (timerText != null &&
+            PhotonNetwork.InRoom &&
+            PhotonNetwork.CurrentRoom != null &&// a change
+            PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("Timer", out var tv))
+        {
+            timerText.text = tv.ToString();
+        }
+
+       
+        if (!PhotonNetwork.IsMasterClient) return;
         if (!running) return;
 
         timer -= Time.deltaTime;
-        if (timerText != null)
-            timerText.text = Mathf.Ceil(timer).ToString();
+        
+        if (Time.time >= nextTimerSync)
+        {
+            nextTimerSync = Time.time + 0.25f;
+
+            if (PhotonNetwork.IsConnectedAndReady && PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom != null)
+            {
+                PhotonNetwork.CurrentRoom.SetCustomProperties(new ExitGames.Client.Photon.Hashtable
+                {
+                    { "Timer", Mathf.CeilToInt(timer) }
+                });
+            }
+        }
+
 
         if (timer <= 0f)
             EndRound();
     }
+
+
 
     void PickReader()
     {
@@ -116,7 +142,7 @@ public class RoundManager : MonoBehaviourPunCallbacks
 
         if (isReader)
         {
-            wordText.text = "..."; 
+            //wordText.text = "..."; 
         }
         else
         {
@@ -131,28 +157,16 @@ public class RoundManager : MonoBehaviourPunCallbacks
             correctButton.onClick.RemoveAllListeners();
             correctButton.onClick.AddListener(() =>
             {
-                if (!isReader) return; // only the reader can change the score
-                if(audioSource && correctSFX) audioSource.PlayOneShot(correctSFX);//sound effect
+                if (!isReader) return;
+                if (audioSource && correctSFX) audioSource.PlayOneShot(correctSFX);
 
-                if (!PhotonNetwork.IsMasterClient)
-                {
-                    photonView.RPC("RPC_RequestScoreDelta", RpcTarget.MasterClient, teamIndex, +1);
-                }
-                else
-                {
-                    BumpScoreTick();
-                    photonView.RPC("RPC_ApplyScoreDelta", RpcTarget.All, teamIndex, +1);
-                }
+                // ALWAYS send to Master (even if you are Master)
+                photonView.RPC("RPC_RequestScoreDelta", RpcTarget.MasterClient, teamIndex, +1);
 
                 if (GameManager.Instance.CheckWin(teamIndex))
-                {
-                    Debug.Log("Victory! Sending GameOver RPC...");
                     photonView.RPC("RPC_GameOver", RpcTarget.All);
-                }
                 else
-                {
                     photonView.RPC("RPC_NewWord", RpcTarget.All);
-                }
             });
         }
 
@@ -162,21 +176,16 @@ public class RoundManager : MonoBehaviourPunCallbacks
             penaltyButton.onClick.AddListener(() =>
             {
                 if (!isReader) return;
-                if(audioSource && wrongSFX) audioSource.PlayOneShot(wrongSFX);
+                if (audioSource && wrongSFX) audioSource.PlayOneShot(wrongSFX);
 
-                if (!PhotonNetwork.IsMasterClient)
-                {
-                    photonView.RPC("RPC_RequestScoreDelta", RpcTarget.MasterClient, teamIndex, -1);
-                }
-                else
-                {
-                    BumpScoreTick();
-                    photonView.RPC("RPC_ApplyScoreDelta", RpcTarget.All, teamIndex, -1);
-                }
+                // ALWAYS send to Master
+                photonView.RPC("RPC_RequestScoreDelta", RpcTarget.MasterClient, teamIndex, -1);
+
                 photonView.RPC("RPC_NewWord", RpcTarget.All);
             });
         }
     }
+
 
     [PunRPC]
     void RPC_SetWord(string w)
@@ -204,22 +213,25 @@ public class RoundManager : MonoBehaviourPunCallbacks
     {
         running = false;
 
-        if (PhotonNetwork.IsMasterClient)
-        {
-            PhotonNetwork.CurrentRoom.SetCustomProperties(new ExitGames.Client.Photon.Hashtable
-            {
-                { "Phase", "GameOver" }
-            });
-        }
-    }
+        if (!PhotonNetwork.IsMasterClient) return;
+        if (!PhotonNetwork.IsConnectedAndReady) return;
+        if (!PhotonNetwork.InRoom) return;
+        if (PhotonNetwork.CurrentRoom == null) return;
 
+        PhotonNetwork.CurrentRoom.SetCustomProperties(new ExitGames.Client.Photon.Hashtable
+        {
+            { "Phase", "GameOver" }
+        });
+    }
 
     void EndRound()
     {
         running = false;
 
-        if (!PhotonNetwork.IsMasterClient)
-            return;
+        if (!PhotonNetwork.IsMasterClient) return;
+        if (!PhotonNetwork.IsConnectedAndReady) return;
+        if (!PhotonNetwork.InRoom) return;
+        if (PhotonNetwork.CurrentRoom == null) return;
 
         int next = GameManager.Instance.NextTeamIndex + 1;
         if (next >= GameManager.Instance.teams.Count)
@@ -305,14 +317,31 @@ public class RoundManager : MonoBehaviourPunCallbacks
         if (PhotonNetwork.IsMasterClient)
         {
             timer = AliasGameSettings.RoundTimeSeconds;
+            Debug.Log("RoundTimeSeconds=" + AliasGameSettings.RoundTimeSeconds);//debug
             running = true;
+            //
+            nextTimerSync = 0f;
+            //
+            PhotonNetwork.CurrentRoom.SetCustomProperties(new ExitGames.Client.Photon.Hashtable
+            {
+                { "Timer", AliasGameSettings.RoundTimeSeconds }
+                //{ "Timer", Mathf.CeilToInt(timer) }
+            });
+            //
             PickReader();
         }
+        
+
 
         if (myTeam == activeTeam)
         {
+            //
+            if (timerText && PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("Timer", out var tv))
+            timerText.text = tv.ToString();
+            //
             SetupButtons();        // safe now (listeners cleared)
             UpdateUIVisibility();
         }
     }
+
 }

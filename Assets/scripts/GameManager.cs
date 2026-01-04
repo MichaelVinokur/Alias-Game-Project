@@ -148,7 +148,7 @@ public class GameManager : MonoBehaviour
         teams[teamIndex].score++;
 
         // עדכון רשת - רק ה-MasterClient או המקריא מעדכנים
-        if (Photon.Pun.PhotonNetwork.IsMasterClient || Photon.Pun.PhotonNetwork.LocalPlayer.IsLocal)
+        if (Photon.Pun.PhotonNetwork.IsMasterClient )//|| Photon.Pun.PhotonNetwork.LocalPlayer.IsLocal
         {
             ExitGames.Client.Photon.Hashtable props = new ExitGames.Client.Photon.Hashtable();
             props.Add("Score_" + teamIndex, teams[teamIndex].score);

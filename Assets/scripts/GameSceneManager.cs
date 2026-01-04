@@ -30,6 +30,14 @@ public class GameSceneManager : MonoBehaviourPunCallbacks
 
     public override void OnRoomPropertiesUpdate(Hashtable changedProps)
     {
+        //
+         if (changedProps.TryGetValue("Phase", out var ph) && (string)ph == "GameOver")
+        {
+            if (PhotonNetwork.IsMasterClient)
+                PhotonNetwork.LoadLevel("EndGameScene"); // exact scene name
+            return;
+        }
+        //
         if (changedProps.ContainsKey("Phase") ||
         changedProps.ContainsKey("ActiveTeam") ||
         changedProps.ContainsKey("NextTeamIndex"))
@@ -63,6 +71,7 @@ public class GameSceneManager : MonoBehaviourPunCallbacks
         cg.interactable = show;
         cg.blocksRaycasts = show;
     }
+
     int GetMyTeam()
     {
         if (PhotonNetwork.LocalPlayer.CustomProperties.TryGetValue("team", out object t))

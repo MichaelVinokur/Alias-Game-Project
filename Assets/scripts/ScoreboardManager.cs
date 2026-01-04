@@ -63,12 +63,20 @@ public class ScoreboardManager : MonoBehaviourPunCallbacks
         if (changedProps.ContainsKey("ScoreTick") ||
             (changedProps.TryGetValue("Phase", out var ph) && (string)ph == "Scoreboard"))
         {
-            BuildScoreboardUI();
+            // BuildScoreboardUI();
+            StartCoroutine(RebuildNextFrame());
+
         }
 
         UpdateScoreboardTextFromRoom();
     }
 
+    IEnumerator RebuildNextFrame()
+    {
+        yield return null;   // wait 1 frame so RPC_ApplyScoreDelta already ran
+        BuildScoreboardUI();
+        UpdateScoreboardTextFromRoom();
+    }
 
     void SetupStartButton()
     {
@@ -78,7 +86,12 @@ public class ScoreboardManager : MonoBehaviourPunCallbacks
         startRoundButton.onClick.AddListener(() =>
         {
             if (!PhotonNetwork.IsMasterClient) return;
+
+            //
+            if (!PhotonNetwork.IsConnectedAndReady) return;
             if (!PhotonNetwork.InRoom) return;
+            if (PhotonNetwork.CurrentRoom == null) return;
+            //
 
             int teamToPlay = GameManager.Instance.NextTeamIndex;
 
@@ -88,9 +101,10 @@ public class ScoreboardManager : MonoBehaviourPunCallbacks
                 { "ActiveTeam", teamToPlay }
             };
 
-            bool ok = PhotonNetwork.CurrentRoom.SetCustomProperties(ht);
+            PhotonNetwork.CurrentRoom.SetCustomProperties(ht);
         });
     }
+
 
 
     void UpdateScoreboardTextFromRoom()
@@ -157,6 +171,7 @@ public class ScoreboardManager : MonoBehaviourPunCallbacks
 
         Debug.Log($"[SBM] BuildScoreboardUI after={teamsListContainer.childCount}");
     }
+
     int GetPlayerTeam(Photon.Realtime.Player p)
     {
         if (p.CustomProperties.TryGetValue("team", out object value))
