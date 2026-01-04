@@ -31,37 +31,7 @@ public class RoundManager : MonoBehaviourPunCallbacks
 
    void Start()
     {
-        if (!PhotonNetwork.InRoom || GameManager.Instance == null)
-            return;
-
-        var props = PhotonNetwork.CurrentRoom.CustomProperties;
-
-        if (!props.TryGetValue("Phase", out var phaseObj) || (string)phaseObj != "Round")
-            return;
-
-        if (!props.TryGetValue("ActiveTeam", out var activeObj))
-            return;
-
-        int activeTeam = (int)activeObj;
-        int myTeam = GetPlayerTeam(PhotonNetwork.LocalPlayer);
-
-        teamIndex = activeTeam;
-
-        // ✅ Master always runs the timer
-        if (PhotonNetwork.IsMasterClient)
-        {
-            timer = AliasGameSettings.RoundTimeSeconds;
-            running = true;
-
-            PickReader(); // master selects reader
-        }
-
-        // ✅ Only playing team sets up UI/buttons
-        if (myTeam == activeTeam)
-        {
-            SetupButtons();
-            UpdateUIVisibility();
-        }
+        InitRoundFromRoomProps();
         Debug.Log($"[RM] Start running. activeSelf={gameObject.activeSelf} room={PhotonNetwork.InRoom}");
     }
 
@@ -76,7 +46,7 @@ public class RoundManager : MonoBehaviourPunCallbacks
 
     void Update()
     {
-        if (!PhotonNetwork.IsMasterClient) return;  // ✅ ONLY master counts time
+        if (!PhotonNetwork.IsMasterClient) return;  
         if (!running) return;
 
         timer -= Time.deltaTime;
@@ -91,13 +61,22 @@ public class RoundManager : MonoBehaviourPunCallbacks
     {
         if (!PhotonNetwork.IsMasterClient) return;
 
-        var team = GameManager.Instance.teams[teamIndex];
-        if (team.players.Count == 0) return;
+        var candidates = PhotonNetwork.PlayerList
+        .Where(p => GetPlayerTeam(p) == teamIndex)
+        .ToList();
 
-        int i = Random.Range(0, team.players.Count);
+        if (candidates.Count == 0)
+        {
+            Debug.LogError($"[RM] No candidates found for team {teamIndex}");
+            return;
+        }
 
-        int readerActorNumber = int.Parse(team.players[i].playerId);
-        photonView.RPC("RPC_SyncReader", RpcTarget.All, readerActorNumber);
+        var chosen = candidates[Random.Range(0, candidates.Count)];
+        Debug.Log($"[RM] ActiveTeam={teamIndex} candidates=" +
+    string.Join(", ", PhotonNetwork.PlayerList.Where(p => GetPlayerTeam(p) == teamIndex)
+        .Select(p => $"{p.NickName}(actor={p.ActorNumber},team={GetPlayerTeam(p)})")));
+
+        photonView.RPC("RPC_SyncReader", RpcTarget.All, chosen.ActorNumber);
     }
 
 
@@ -149,12 +128,21 @@ public class RoundManager : MonoBehaviourPunCallbacks
     {
         if (correctButton)
         {
+            correctButton.onClick.RemoveAllListeners();
             correctButton.onClick.AddListener(() =>
             {
                 if (!isReader) return; // only the reader can change the score
                 if(audioSource && correctSFX) audioSource.PlayOneShot(correctSFX);//sound effect
-                
-                GameManager.Instance.AddCorrectPoint(teamIndex); //++
+
+                if (!PhotonNetwork.IsMasterClient)
+                {
+                    photonView.RPC("RPC_RequestScoreDelta", RpcTarget.MasterClient, teamIndex, +1);
+                }
+                else
+                {
+                    BumpScoreTick();
+                    photonView.RPC("RPC_ApplyScoreDelta", RpcTarget.All, teamIndex, +1);
+                }
 
                 if (GameManager.Instance.CheckWin(teamIndex))
                 {
@@ -170,12 +158,21 @@ public class RoundManager : MonoBehaviourPunCallbacks
 
         if (penaltyButton)
         {
+            penaltyButton.onClick.RemoveAllListeners();
             penaltyButton.onClick.AddListener(() =>
             {
                 if (!isReader) return;
                 if(audioSource && wrongSFX) audioSource.PlayOneShot(wrongSFX);
 
-                GameManager.Instance.AddPenalty(teamIndex);
+                if (!PhotonNetwork.IsMasterClient)
+                {
+                    photonView.RPC("RPC_RequestScoreDelta", RpcTarget.MasterClient, teamIndex, -1);
+                }
+                else
+                {
+                    BumpScoreTick();
+                    photonView.RPC("RPC_ApplyScoreDelta", RpcTarget.All, teamIndex, -1);
+                }
                 photonView.RPC("RPC_NewWord", RpcTarget.All);
             });
         }
@@ -248,7 +245,7 @@ public class RoundManager : MonoBehaviourPunCallbacks
         {
             // re-init round for all clients
             enabled = true;
-            Start(); // simplest for now (later we’ll extract InitRound())
+            InitRoundFromRoomProps();
             return;
         }
 
@@ -257,4 +254,65 @@ public class RoundManager : MonoBehaviourPunCallbacks
             running = false;
     }
 
+    [PunRPC]
+    void RPC_RequestScoreDelta(int teamIdx, int delta, PhotonMessageInfo info)
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+
+        BumpScoreTick();
+        photonView.RPC("RPC_ApplyScoreDelta", RpcTarget.All, teamIdx, delta);
+    }
+
+    [PunRPC]
+    void RPC_ApplyScoreDelta(int teamIdx, int delta)
+    {
+        ApplyScoreDelta(teamIdx, delta);
+    }
+
+    void ApplyScoreDelta(int teamIdx, int delta)
+    {
+        if (delta > 0) GameManager.Instance.AddCorrectPoint(teamIdx);
+        else GameManager.Instance.AddPenalty(teamIdx);
+    }
+    void BumpScoreTick()
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+        if (!PhotonNetwork.InRoom) return;
+
+        int tick = 0;
+        var props = PhotonNetwork.CurrentRoom.CustomProperties;
+        if (props.TryGetValue("ScoreTick", out var t)) tick = (int)t;
+
+        PhotonNetwork.CurrentRoom.SetCustomProperties(new ExitGames.Client.Photon.Hashtable
+        {
+            { "ScoreTick", tick + 1 }
+        });
+    }
+    void InitRoundFromRoomProps()
+    {
+        if (!PhotonNetwork.InRoom || GameManager.Instance == null) return;
+
+        var props = PhotonNetwork.CurrentRoom.CustomProperties;
+        if (!props.TryGetValue("Phase", out var phaseObj) || (string)phaseObj != "Round") return;
+        if (!props.TryGetValue("ActiveTeam", out var activeObj)) return;
+
+        int activeTeam = (int)activeObj;
+        int myTeam = GetPlayerTeam(PhotonNetwork.LocalPlayer);
+
+        teamIndex = activeTeam;
+
+        // master runs timer + picks reader once
+        if (PhotonNetwork.IsMasterClient)
+        {
+            timer = AliasGameSettings.RoundTimeSeconds;
+            running = true;
+            PickReader();
+        }
+
+        if (myTeam == activeTeam)
+        {
+            SetupButtons();        // safe now (listeners cleared)
+            UpdateUIVisibility();
+        }
+    }
 }

@@ -22,6 +22,8 @@ public class ScoreboardManager : MonoBehaviourPunCallbacks
 
     void Start()
     {
+        Debug.Log($"[TEAM] I am {PhotonNetwork.LocalPlayer.NickName} actor={PhotonNetwork.LocalPlayer.ActorNumber} teamProp={GetPlayerTeam(PhotonNetwork.LocalPlayer)}");
+
         Debug.Log($"[SBM] Start activeSelf={gameObject.activeSelf} inRoom={PhotonNetwork.InRoom} isMaster={PhotonNetwork.IsMasterClient}");
 
         if (startRoundButton)
@@ -46,22 +48,27 @@ public class ScoreboardManager : MonoBehaviourPunCallbacks
 
     public override void OnRoomPropertiesUpdate(ExitGames.Client.Photon.Hashtable changedProps)
     {
-        // Print what changed + current full state
         Debug.Log("[SBM] OnRoomPropertiesUpdate changedKeys=" +
                   string.Join(",", changedProps.Keys.Cast<object>().Select(k => k.ToString())));
 
-        // Update UI when relevant keys change
-        if (changedProps.ContainsKey("Phase") ||
+        bool shouldRebuild =
+            changedProps.ContainsKey("ScoreTick") ||       
+            changedProps.ContainsKey("Phase") ||
             changedProps.ContainsKey("ActiveTeam") ||
-            changedProps.ContainsKey("NextTeamIndex"))
-        {
-            // If round ended and we returned to scoreboard, rebuild scores
-            if (changedProps.TryGetValue("Phase", out var ph) && (string)ph == "Scoreboard")
-                BuildScoreboardUI();
+            changedProps.ContainsKey("NextTeamIndex");
 
-            UpdateScoreboardTextFromRoom();
+        if (!shouldRebuild) return;
+
+        // Rebuild scoreboard when scores changed OR when returning to scoreboard
+        if (changedProps.ContainsKey("ScoreTick") ||
+            (changedProps.TryGetValue("Phase", out var ph) && (string)ph == "Scoreboard"))
+        {
+            BuildScoreboardUI();
         }
+
+        UpdateScoreboardTextFromRoom();
     }
+
 
     void SetupStartButton()
     {
@@ -150,5 +157,11 @@ public class ScoreboardManager : MonoBehaviourPunCallbacks
 
         Debug.Log($"[SBM] BuildScoreboardUI after={teamsListContainer.childCount}");
     }
+    int GetPlayerTeam(Photon.Realtime.Player p)
+    {
+        if (p.CustomProperties.TryGetValue("team", out object value))
+            return (int)value;
 
+        return -1;
+    }
 }
