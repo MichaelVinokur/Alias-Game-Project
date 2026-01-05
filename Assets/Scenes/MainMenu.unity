@@ -1964,12 +1964,12 @@ MonoBehaviour:
     nextTeamIndex: 0
     selectedCategoryIndex: 0
   categories:
-  - categoryName: Animals
-    fileName: animals
-  - categoryName: Movies & TV
-    fileName: movies_tv
   - categoryName: General
     fileName: general
+  - categoryName: Movies & TV
+    fileName: movies_tv
+  - categoryName: Nature
+    fileName: animals
   currentCategory:
     categoryName: 
     fileName: 

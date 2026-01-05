@@ -3,7 +3,7 @@ using TMPro;
 using UnityEngine.SceneManagement;
 using Photon.Pun;
 
-public class EndGameScript : MonoBehaviour
+public class EndGameScript : MonoBehaviourPunCallbacks
 {
     public TMP_Text winnersText;
     public Transform scoreTableContent;
@@ -52,10 +52,17 @@ public class EndGameScript : MonoBehaviour
 
     public void OnReturnToMainMenu()
     {
-        if (PhotonNetwork.IsConnected)
+        if (PhotonNetwork.InRoom)
         {
             PhotonNetwork.LeaveRoom();
+            return; // wait for callback
         }
+
+        UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenu");
+    }
+
+    public override void OnLeftRoom()
+    {
         UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenu");
     }
 }

@@ -1,31 +1,13 @@
 {
-    "m_SelectedDeviceId": "RFCT306PM7D",
+    "m_SelectedDeviceId": "emulator-5554",
     "m_SelectedProcess": {
-        "deviceId": "RFCT306PM7D",
+        "deviceId": "emulator-5554",
         "name": "com.MaorMisha.Alias",
-        "processId": 19084,
+        "processId": 7571,
         "exited": false
     },
     "m_SelectedPriority": 0,
     "m_KnownProcessesForSerialization": [
-        {
-            "deviceId": "emulator-5554",
-            "name": "com.MaorMisha.Alias",
-            "processId": 6942,
-            "exited": true
-        },
-        {
-            "deviceId": "emulator-5554",
-            "name": "com.MaorMisha.Alias",
-            "processId": 7827,
-            "exited": true
-        },
-        {
-            "deviceId": "emulator-5554",
-            "name": "com.MaorMisha.Alias",
-            "processId": 6350,
-            "exited": true
-        },
         {
             "deviceId": "emulator-5554",
             "name": "com.MaorMisha.Alias",
@@ -36,6 +18,30 @@
             "deviceId": "emulator-5554",
             "name": "com.MaorMisha.Alias",
             "processId": 4514,
+            "exited": true
+        },
+        {
+            "deviceId": "emulator-5554",
+            "name": "com.MaorMisha.Alias",
+            "processId": 6625,
+            "exited": true
+        },
+        {
+            "deviceId": "emulator-5554",
+            "name": "com.MaorMisha.Alias",
+            "processId": 8903,
+            "exited": true
+        },
+        {
+            "deviceId": "emulator-5554",
+            "name": "com.MaorMisha.Alias",
+            "processId": 11179,
+            "exited": false
+        },
+        {
+            "deviceId": "emulator-5554",
+            "name": "com.MaorMisha.Alias",
+            "processId": 7571,
             "exited": false
         },
         {

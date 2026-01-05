@@ -7,6 +7,7 @@ using UnityEngine.SceneManagement;
 
 public class SameRoomNetworkManager : MonoBehaviourPunCallbacks
 {
+
     [Header("UI - Common")]
     public TMPro.TMP_Text hostCodeText;          // text somewhere on screen to show host's code
 
@@ -22,37 +23,37 @@ public class SameRoomNetworkManager : MonoBehaviourPunCallbacks
     private static bool isHosting; //for loading scene
     private static string savedName; //for loading scene
     private static string savedCode; //for loading scene
+    private bool pendingAction;
+    public static bool PendingIsHosting { get; private set; }
+    private static string pendingName;
+    private static string pendingCode;
+    void Awake()
+    {
+        Debug.Log("[SRNM] Awake instance id=" + GetInstanceID());
+    }
     void Start()
     {
-        DontDestroyOnLoad(this.gameObject); //for loading scene
-        // hide both popups at the start
-        if (hostPopupPanel != null) hostPopupPanel.SetActive(false);
-        if (joinPopupPanel != null) joinPopupPanel.SetActive(false);
+        Debug.Log("[SRNM] Start state=" + PhotonNetwork.NetworkClientState);
 
-        if (!PhotonNetwork.IsConnected)
+        PhotonNetwork.AutomaticallySyncScene = true;
+
+        var st = PhotonNetwork.NetworkClientState;
+        if (st == ClientState.PeerCreated || st == ClientState.Disconnected)
         {
-            PhotonNetwork.AutomaticallySyncScene = true;
+            Debug.Log("[SRNM] Connecting... state=" + st);
             PhotonNetwork.ConnectUsingSettings();
-        }
-    }
-
-    void OnLevelWasLoaded(int level) // loading scene 
-    {
-        if (SceneManager.GetActiveScene().name == "LoadingScene")
-        {
-            if (isHosting) 
-                ExecuteHostLogic();
-            else 
-                ExecuteJoinLogic();
         }
     }
 
     public override void OnConnectedToMaster()
     {
         Debug.Log("Connected to Photon");
-        PhotonNetwork.JoinLobby();
+        PhotonNetwork.AutomaticallySyncScene = true;
     }
-
+    public override void OnDisconnected(DisconnectCause cause)
+    {
+        Debug.LogError("[SRNM] Disconnected: " + cause);
+    }
     // ================= HOST FLOW =================
 
     // Main screen "Create Game" button
@@ -73,11 +74,14 @@ public class SameRoomNetworkManager : MonoBehaviourPunCallbacks
     // "Create Game" button inside host popup
     public void OnHostCreateGame()
     {
-        savedName = hostNameInput.text.Trim();
-        if (string.IsNullOrEmpty(savedName)) return;
+        var name = hostNameInput.text.Trim();
+        if (string.IsNullOrEmpty(name)) return;
 
-        isHosting = true;
-        SceneManager.LoadScene("LoadingScene"); 
+        PendingIsHosting = true;
+        pendingName = name;
+
+        if (hostPopupPanel) hostPopupPanel.SetActive(false);
+        SceneManager.LoadScene("LoadingScene");
     }
 
     private void ExecuteHostLogic()
@@ -110,12 +114,15 @@ public class SameRoomNetworkManager : MonoBehaviourPunCallbacks
     // "Join Game" button inside join popup
     public void OnJoinConfirm()
     {
-        savedCode = joinCodeInput.text.Trim();
-        savedName = joinNameInput.text.Trim();
+        var code = joinCodeInput.text.Trim();
+        var name = joinNameInput.text.Trim();
+        if (string.IsNullOrEmpty(code) || string.IsNullOrEmpty(name)) return;
 
-        if (string.IsNullOrEmpty(savedCode) || string.IsNullOrEmpty(savedName)) return;
+        PendingIsHosting = false;
+        pendingCode = code;
+        pendingName = name;
 
-        isHosting = false;
+        if (joinPopupPanel) joinPopupPanel.SetActive(false);
         SceneManager.LoadScene("LoadingScene");
     }
 
@@ -143,6 +150,20 @@ public class SameRoomNetworkManager : MonoBehaviourPunCallbacks
     {
         Debug.LogWarning("Create room failed: " + message);
         SceneManager.LoadScene("SameRoom");
+    }
+
+    public static void ExecuteHostNow()
+    {
+        PhotonNetwork.NickName = pendingName;
+        string roomCode = Random.Range(100000, 999999).ToString();
+        RoomOptions options = new RoomOptions { MaxPlayers = 8 };
+        PhotonNetwork.CreateRoom(roomCode, options);
+    }
+
+    public static void ExecuteJoinNow()
+    {
+        PhotonNetwork.NickName = pendingName;
+        PhotonNetwork.JoinRoom(pendingCode);
     }
 
     //fix for android studio
