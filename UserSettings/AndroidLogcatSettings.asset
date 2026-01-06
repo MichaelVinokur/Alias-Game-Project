@@ -1,9 +1,9 @@
 {
-    "m_SelectedDeviceId": "emulator-5554",
+    "m_SelectedDeviceId": "RFCT306PM7D",
     "m_SelectedProcess": {
-        "deviceId": "emulator-5554",
+        "deviceId": "RFCT306PM7D",
         "name": "com.MaorMisha.Alias",
-        "processId": 7571,
+        "processId": 3707,
         "exited": false
     },
     "m_SelectedPriority": 0,
@@ -210,6 +210,78 @@
             "deviceId": "RFCT306PM7D",
             "name": "com.MaorMisha.Alias",
             "processId": 19084,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCT306PM7D",
+            "name": "com.MaorMisha.Alias",
+            "processId": 5191,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCT306PM7D",
+            "name": "com.MaorMisha.Alias",
+            "processId": 15813,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCT306PM7D",
+            "name": "com.MaorMisha.Alias",
+            "processId": 23750,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCT306PM7D",
+            "name": "com.MaorMisha.Alias",
+            "processId": 24806,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCT306PM7D",
+            "name": "com.MaorMisha.Alias",
+            "processId": 27980,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCT306PM7D",
+            "name": "com.MaorMisha.Alias",
+            "processId": 29025,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCT306PM7D",
+            "name": "com.MaorMisha.Alias",
+            "processId": 32066,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCT306PM7D",
+            "name": "com.MaorMisha.Alias",
+            "processId": 1729,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCT306PM7D",
+            "name": "com.MaorMisha.Alias",
+            "processId": 4258,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCT306PM7D",
+            "name": "com.MaorMisha.Alias",
+            "processId": 22219,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCT306PM7D",
+            "name": "com.MaorMisha.Alias",
+            "processId": 27669,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCT306PM7D",
+            "name": "com.MaorMisha.Alias",
+            "processId": 3707,
             "exited": false
         }
     ],

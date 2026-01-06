@@ -1954,6 +1954,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e3d22989290f0254284e74429a24591c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  VoiceEnabled: 0
   settings:
     roundSeconds: 60
     numberOfTeams: 2

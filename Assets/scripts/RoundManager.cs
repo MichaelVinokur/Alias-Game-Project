@@ -5,6 +5,7 @@ using UnityEngine.SceneManagement;
 using Photon.Pun;
 using System.Collections.Generic;
 using System.Linq;
+using Photon.Voice.Unity;//online
 
 
 public class RoundManager : MonoBehaviourPunCallbacks
@@ -20,6 +21,8 @@ public class RoundManager : MonoBehaviourPunCallbacks
     public AudioSource audioSource;
     public AudioClip correctSFX;
     public AudioClip wrongSFX;
+    private Recorder recorder;//online
+    private Speaker[] speakers;//online
 
     private float timer;
     private bool running;
@@ -34,6 +37,8 @@ public class RoundManager : MonoBehaviourPunCallbacks
     {
         InitRoundFromRoomProps();
         Debug.Log($"[RM] Start running. activeSelf={gameObject.activeSelf} room={PhotonNetwork.InRoom}");
+        var r = Object.FindAnyObjectByType<Recorder>(FindObjectsInactive.Include);
+        Debug.Log($"[VOICE] recorder={(r != null)} recEnabled={(r != null && r.RecordingEnabled)} transmit={(r != null && r.TransmitEnabled)}");
     }
 
 
@@ -212,7 +217,8 @@ public class RoundManager : MonoBehaviourPunCallbacks
     void RPC_GameOver()
     {
         running = false;
-
+        SetMicEnabled(false);
+        SetSpeakersEnabled(false);
         if (!PhotonNetwork.IsMasterClient) return;
         if (!PhotonNetwork.IsConnectedAndReady) return;
         if (!PhotonNetwork.InRoom) return;
@@ -227,7 +233,8 @@ public class RoundManager : MonoBehaviourPunCallbacks
     void EndRound()
     {
         running = false;
-
+        SetMicEnabled(false);
+        SetSpeakersEnabled(false);
         if (!PhotonNetwork.IsMasterClient) return;
         if (!PhotonNetwork.IsConnectedAndReady) return;
         if (!PhotonNetwork.InRoom) return;
@@ -238,7 +245,6 @@ public class RoundManager : MonoBehaviourPunCallbacks
             next = 0;
 
         GameManager.Instance.NextTeamIndex = next;
-
         PhotonNetwork.CurrentRoom.SetCustomProperties(new ExitGames.Client.Photon.Hashtable
         {
             { "Phase", "Scoreboard" },
@@ -249,6 +255,9 @@ public class RoundManager : MonoBehaviourPunCallbacks
 
     public override void OnRoomPropertiesUpdate(ExitGames.Client.Photon.Hashtable changedProps)
     {
+        if (changedProps.ContainsKey("ActiveTeam"))//online
+            ApplyVoiceByActiveTeam((int)changedProps["ActiveTeam"]);
+
         if (!changedProps.ContainsKey("Phase")) return;
 
         string phase = (string)changedProps["Phase"];
@@ -312,6 +321,7 @@ public class RoundManager : MonoBehaviourPunCallbacks
         int myTeam = GetPlayerTeam(PhotonNetwork.LocalPlayer);
 
         teamIndex = activeTeam;
+        ApplyVoiceByActiveTeam(activeTeam);//online
 
         // master runs timer + picks reader once
         if (PhotonNetwork.IsMasterClient)
@@ -330,9 +340,6 @@ public class RoundManager : MonoBehaviourPunCallbacks
             //
             PickReader();
         }
-        
-
-
         if (myTeam == activeTeam)
         {
             //
@@ -342,6 +349,52 @@ public class RoundManager : MonoBehaviourPunCallbacks
             SetupButtons();        // safe now (listeners cleared)
             UpdateUIVisibility();
         }
+    }
+    //online-addons
+    void CacheVoice()
+    {
+        if (recorder == null)
+            recorder = Object.FindAnyObjectByType<Recorder>(FindObjectsInactive.Include);
+
+        if (speakers == null || speakers.Length == 0)
+            speakers = Object.FindObjectsByType<Speaker>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None
+            );
+    }
+
+    void SetMicEnabled(bool enabled)
+    {
+        CacheVoice();
+        if (recorder != null) recorder.TransmitEnabled = enabled;
+    }
+
+    void SetSpeakersEnabled(bool enabled)
+    {
+        CacheVoice();
+        if (speakers != null)
+            foreach (var s in speakers)
+                if (s != null) s.enabled = enabled;
+    }
+
+    void ApplyVoiceByActiveTeam(int activeTeam)
+    {
+        //SetVoiceEnabledForMe(true);
+        // If SameRoom mode => always off
+        if (GameManager.Instance == null || !GameManager.Instance.VoiceEnabled)
+        {
+            SetMicEnabled(false);
+            SetSpeakersEnabled(false);
+            return;
+        }
+
+        // Online => everyone can hear
+        SetSpeakersEnabled(true);
+
+        // Only active team can talk
+        int myTeam = GetPlayerTeam(PhotonNetwork.LocalPlayer);
+        bool amActiveTeam = (myTeam == activeTeam);
+        SetMicEnabled(amActiveTeam);
     }
 
 }

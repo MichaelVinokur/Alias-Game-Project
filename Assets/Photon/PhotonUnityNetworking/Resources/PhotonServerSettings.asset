@@ -13,13 +13,13 @@ MonoBehaviour:
   m_Name: PhotonServerSettings
   m_EditorClassIdentifier: 
   AppSettings:
-    AppIdRealtime: 3a300262-4d1e-4988-b50e-df88c3209677
+    AppIdRealtime: cc4e69c3-5658-42db-a339-3f25ff277fe1
     AppIdFusion: 
-    AppIdChat: 531aa376-f008-40bf-8c2b-1c89f6625f83
-    AppIdVoice: 
+    AppIdChat: 
+    AppIdVoice: 3afed36b-e5e9-4139-9be4-48c8f6ebe69d
     AppVersion: 
     UseNameServer: 1
-    FixedRegion: eu
+    FixedRegion: 
     Server: 
     Port: 0
     ProxyServer: 
@@ -28,24 +28,26 @@ MonoBehaviour:
     AuthMode: 0
     EnableLobbyStatistics: 0
     NetworkLogging: 1
-  DevRegion: eu
+  DevRegion: 
   PunLogging: 0
   EnableSupportLogger: 0
   RunInBackground: 1
   StartInOfflineMode: 0
   RpcList:
+  - CantHearYou
+  - ChangeColour
   - ClickRpc
   - DestroyRpc
+  - HeresWhy
   - DestroySpaceship
   - Fire
   - RespawnSpaceship
-  - RPC_NewWord
-  - RPC_SetWord
-  - RPC_GameOver
-  - RPC_StartRoundForTeam
-  - RPC_SyncReader
   - RPC_ApplyScoreDelta
+  - RPC_GameOver
+  - RPC_NewWord
   - RPC_RequestScoreDelta
+  - RPC_SetWord
+  - RPC_SyncReader
   DisableAutoOpenWizard: 1
   ShowSettings: 1
-  DevRegionSetOnce: 1
+  DevRegionSetOnce: 0

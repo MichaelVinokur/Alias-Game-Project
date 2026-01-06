@@ -10,6 +10,7 @@ Library: C:\src\MyProjectsUnity\Alias\Temp\BurstOutput\tempburstlibs\x86_64\lib_
 --target-framework=NetFramework
 --generate-link-xml=Temp\burst.link.xml
 --temp-folder=C:\src\MyProjectsUnity\Alias\Temp\Burst
+--debug=Full
 --key-folder=C:/Program Files/Unity/Hub/Editor/6000.0.61f1/Editor/Data/PlaybackEngines/AndroidPlayer
 --decode-folder=C:\src\MyProjectsUnity\Alias\Library\Burst
 --output=C:\src\MyProjectsUnity\Alias\Temp\BurstOutput\tempburstlibs\x86_64\lib_burst_generated
@@ -126,6 +127,7 @@ Library: C:\src\MyProjectsUnity\Alias\Temp\BurstOutput\tempburstlibs\x86_64\lib_
 --target-framework=NetFramework
 --generate-link-xml=Temp\burst.link.xml
 --temp-folder=C:\src\MyProjectsUnity\Alias\Temp\Burst
+--debug=Full
 --key-folder=C:/Program Files/Unity/Hub/Editor/6000.0.61f1/Editor/Data/PlaybackEngines/AndroidPlayer
 --decode-folder=C:\src\MyProjectsUnity\Alias\Library\Burst
 --output=C:\src\MyProjectsUnity\Alias\Temp\BurstOutput\tempburstlibs\x86_64\lib_burst_generated
@@ -154,6 +156,7 @@ Library: C:\src\MyProjectsUnity\Alias\Temp\BurstOutput\tempburstlibs\x86_64\lib_
 --float-mode=Fast
 --generate-link-xml=Temp\burst.link.xml
 --temp-folder=C:\src\MyProjectsUnity\Alias\Temp\Burst
+--debug=Full
 --key-folder=C:/Program Files/Unity/Hub/Editor/6000.0.61f1/Editor/Data/PlaybackEngines/AndroidPlayer
 --decode-folder=C:\src\MyProjectsUnity\Alias\Library\Burst
 --output=C:\src\MyProjectsUnity\Alias\Temp\BurstOutput\tempburstlibs\x86_64\lib_burst_generated
