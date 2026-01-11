@@ -2309,7 +2309,7 @@ MonoBehaviour:
   debugEchoMode: 0
   reliableMode: 0
   encrypt: 0
-  transmitEnabled: 1
+  transmitEnabled: 0
   samplingRate: 48000
   frameDuration: 40000
   bitrate: 30000
@@ -2317,7 +2317,7 @@ MonoBehaviour:
   microphoneType: 0
   audioClip: {fileID: 0}
   loopAudioClip: 1
-  recordingEnabled: 1
+  recordingEnabled: 0
   audioSessionParameters:
     Category: 4
     Mode: 1
@@ -2330,7 +2330,7 @@ MonoBehaviour:
   stopRecordingWhenPaused: 0
   useOnAudioFilterRead: 0
   useMicrophoneTypeFallback: 1
-  recordWhenJoined: 1
+  recordWhenJoined: 0
 --- !u!4 &1490953741
 Transform:
   m_ObjectHideFlags: 0
@@ -2360,7 +2360,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   DisconnectAfterKeepAlive: 0
   KeepAliveInBackground: 60000
-  ApplyDontDestroyOnLoad: 1
+  ApplyDontDestroyOnLoad: 0
   runInBackground: 1
   statsResetInterval: 1000
   speakerPrefab: {fileID: 4973381658274221766, guid: bb8ef1209faed4d4689110b91eae8e1c, type: 3}
@@ -2397,10 +2397,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 65b99afb3758e9e4689c28a18224eb8f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  RandomRoom: 1
+  RandomRoom: 0
   autoConnect: 1
-  publishUserId: 0
-  RoomName: 
+  publishUserId: 1
+  RoomName: AliasVoiceTest
 --- !u!1 &1495453276
 GameObject:
   m_ObjectHideFlags: 0

@@ -216,6 +216,13 @@ public class RoundManager : MonoBehaviourPunCallbacks
     [PunRPC]
     void RPC_GameOver()
     {
+
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.VoiceEnabled = false;
+            GameManager.Instance.ForceDisableVoiceEverywhere();
+        }
+
         running = false;
         SetMicEnabled(false);
         SetSpeakersEnabled(false);
@@ -313,6 +320,13 @@ public class RoundManager : MonoBehaviourPunCallbacks
     {
         if (!PhotonNetwork.InRoom || GameManager.Instance == null) return;
 
+        //
+        if (!GameManager.Instance.VoiceEnabled) {
+        SetMicEnabled(false);
+        SetSpeakersEnabled(false);
+        }
+        //
+
         var props = PhotonNetwork.CurrentRoom.CustomProperties;
         if (!props.TryGetValue("Phase", out var phaseObj) || (string)phaseObj != "Round") return;
         if (!props.TryGetValue("ActiveTeam", out var activeObj)) return;
@@ -363,24 +377,75 @@ public class RoundManager : MonoBehaviourPunCallbacks
             );
     }
 
+    
     void SetMicEnabled(bool enabled)
     {
         CacheVoice();
-        if (recorder != null) recorder.TransmitEnabled = enabled;
+        if (recorder != null)
+        {
+           
+            bool shouldActuallyTransmit = GameManager.Instance.VoiceEnabled && enabled;
+            
+            recorder.TransmitEnabled = shouldActuallyTransmit;
+            recorder.RecordingEnabled = shouldActuallyTransmit;
+            
+            Debug.Log($"[VOICE] Mic Enabled: {shouldActuallyTransmit} (GameMode: {GameManager.Instance.VoiceEnabled})");
+        }
     }
 
+    // void SetSpeakersEnabled(bool enabled)
+    // {
+    //     CacheVoice();
+    //     if (speakers != null)
+    //         foreach (var s in speakers)
+    //             if (s != null) s.enabled = enabled;
+    // }
     void SetSpeakersEnabled(bool enabled)
     {
         CacheVoice();
-        if (speakers != null)
-            foreach (var s in speakers)
-                if (s != null) s.enabled = enabled;
+        if (speakers == null) return;
+
+        foreach (var s in speakers)
+        {
+            if (s == null) continue;
+
+            // If this speaker is on my own player object → don't enable it
+            var pv = s.GetComponentInParent<PhotonView>();
+            if (pv != null && pv.IsMine)
+            {
+                s.enabled = false;
+                continue;
+            }
+
+            s.enabled = enabled;
+        }
     }
 
+
+
+    // void ApplyVoiceByActiveTeam(int activeTeam)
+    // {
+        
+    //     if (GameManager.Instance == null || !GameManager.Instance.VoiceEnabled)
+    //     {
+    //         Debug.Log("[VOICE] Mode is SameRoom or Voice Disabled. Forcing OFF.");
+    //         SetMicEnabled(false);
+    //         SetSpeakersEnabled(false);
+    //         return; 
+    //     }
+
+        
+    //     SetSpeakersEnabled(true);
+
+    //     int myTeam = GetPlayerTeam(PhotonNetwork.LocalPlayer);
+    //     bool amActiveTeam = (myTeam == activeTeam);
+        
+        
+    //     SetMicEnabled(amActiveTeam);
+    // }
     void ApplyVoiceByActiveTeam(int activeTeam)
     {
-        //SetVoiceEnabledForMe(true);
-        // If SameRoom mode => always off
+        // SameRoom mode => always off
         if (GameManager.Instance == null || !GameManager.Instance.VoiceEnabled)
         {
             SetMicEnabled(false);
@@ -388,7 +453,8 @@ public class RoundManager : MonoBehaviourPunCallbacks
             return;
         }
 
-        // Online => everyone can hear
+        // Online mode:
+        // Everyone can hear
         SetSpeakersEnabled(true);
 
         // Only active team can talk

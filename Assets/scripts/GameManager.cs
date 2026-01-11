@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
+using Photon.Voice.Unity;
+using Photon.Voice.PUN;
 
 public class GameManager : MonoBehaviour
 {
@@ -55,6 +57,94 @@ public class GameManager : MonoBehaviour
         LoadCurrentCategoryWords();
         ResetDeck();
     }
+
+    // public void ApplyVoiceMode()
+    // {
+    //     // If you don't have PhotonVoiceNetwork in the project, stop here
+    //     if (PhotonVoiceNetwork.Instance == null)
+    //     {
+    //         Debug.LogWarning("[VOICE] PhotonVoiceNetwork.Instance is null (Voice prefab missing?)");
+    //         return;
+    //     }
+
+    //     var recorder = PhotonVoiceNetwork.Instance.PrimaryRecorder;
+
+    //     if (!VoiceEnabled)
+    //     {
+    //         // SAME ROOM => hard OFF
+    //         if (recorder != null)
+    //         {
+    //             recorder.DebugEchoMode = false;
+    //             recorder.TransmitEnabled = false;
+    //             recorder.RecordingEnabled = false;
+    //         }
+
+    //         if (PhotonVoiceNetwork.Instance.ClientState == Photon.Realtime.ClientState.Joined)
+    //             PhotonVoiceNetwork.Instance.Disconnect();
+
+    //         DisableAllSpeakers();
+    //         return;
+    //     }
+
+    //     // ONLINE => ON
+    //     if (PhotonNetwork.InRoom && PhotonVoiceNetwork.Instance.ClientState != Photon.Realtime.ClientState.Joined)
+    //     {
+    //         PhotonVoiceNetwork.Instance.ConnectAndJoinRoom();
+    //     }
+
+    //     if (recorder != null)
+    //     {
+    //         recorder.DebugEchoMode = false;   // important
+    //         recorder.RecordingEnabled = true; // mic can be enabled later by RoundManager
+    //         recorder.TransmitEnabled = false; // default OFF until active team
+    //     }
+    // }
+
+    public void SetMicState(bool enabled)
+    {
+        var recorder = FindObjectOfType<Recorder>();
+        if (recorder == null)
+        {
+            Debug.Log("[VOICE] Recorder not found");
+            return;
+        }
+
+        recorder.RecordingEnabled = enabled;
+        recorder.TransmitEnabled = enabled;
+
+        Debug.Log($"[VOICE] Mic set to {enabled}");
+    }
+    public void ForceDisableVoiceEverywhere()
+    {
+        // Disable ALL recorders (sometimes you have more than one)
+        var recorders = Object.FindObjectsByType<Recorder>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None
+        );
+
+        foreach (var r in recorders)
+        {
+            if (r == null) continue;
+            r.TransmitEnabled = false;
+            r.RecordingEnabled = false;
+        }
+
+        // Disable ALL speakers
+        var speakers = Object.FindObjectsByType<Speaker>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None
+        );
+
+        foreach (var s in speakers)
+            if (s != null) s.enabled = false;
+    }
+    public void DisableAllSpeakers()
+    {
+        var speakers = Object.FindObjectsByType<Speaker>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (var s in speakers)
+            if (s != null) s.enabled = false;
+    }
+
 
     // ==============================
     //        CATEGORY SYSTEM
@@ -145,10 +235,9 @@ public class GameManager : MonoBehaviour
 
     public void AddCorrectPoint(int teamIndex)
     {
-        // עדכון מקומי
+        
         teams[teamIndex].score++;
 
-        // עדכון רשת - רק ה-MasterClient או המקריא מעדכנים
         if (Photon.Pun.PhotonNetwork.IsMasterClient )//|| Photon.Pun.PhotonNetwork.LocalPlayer.IsLocal
         {
             ExitGames.Client.Photon.Hashtable props = new ExitGames.Client.Photon.Hashtable();
@@ -166,4 +255,18 @@ public class GameManager : MonoBehaviour
     {
         return teams[teamIndex].score >= settings.targetScore;
     }
+
+
+    // 
+    public void ResetMatch(int numberOfTeams)
+    {
+        if (teams == null || teams.Count != numberOfTeams)
+            InitializeTeams(numberOfTeams);
+
+        foreach (var t in teams)
+            t.score = 0;
+
+        NextTeamIndex = 0;
+    }
+    //
 }

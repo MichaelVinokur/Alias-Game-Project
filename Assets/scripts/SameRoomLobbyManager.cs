@@ -5,6 +5,7 @@ using Photon.Realtime;
 using TMPro;
 using ExitGames.Client.Photon;
 using Photon.Pun.UtilityScripts;
+using Photon.Voice.Unity;
 
 public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
 {
@@ -40,6 +41,11 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
 
     void Start()
     {
+
+        if (GameManager.Instance != null)
+            GameManager.Instance.ForceDisableVoiceEverywhere();
+              
+
         // RESET LOCK: Ensure we can start a new game when we enter the lobby
         isGameStarting = false;
 
@@ -102,6 +108,8 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
         if (settingsButton != null) 
             settingsButton.SetActive(isHost);
     }
+
+
 
     void OnCategoryChanged(int index)
     {
@@ -304,6 +312,9 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
 
     private void StartGame()
     {
+        
+        // if (GameManager.Instance != null)
+        //     GameManager.Instance.ApplyVoiceMode();
         // 1. Safety Checks
         if (!PhotonNetwork.IsMasterClient) return;
         
@@ -341,6 +352,7 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
         {
             { "NextTeamIndex", 0 }
         });
+
 
         // 6. Load scoreboard (ONCE)
         PhotonNetwork.LoadLevel("GameScene");

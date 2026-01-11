@@ -16,11 +16,39 @@ public class GameSceneManager : MonoBehaviourPunCallbacks
     
     public override void OnJoinedRoom()
     {
+        //
+        if (GameManager.Instance != null)
+            GameManager.Instance.ResetMatch(AliasGameSettings.NumTeams);
+        
+        if (PhotonNetwork.IsMasterClient && PhotonNetwork.IsConnectedAndReady && PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom != null)
+        {
+            var ht = new Hashtable
+            {
+                { "Phase", "Scoreboard" },
+                { "NextTeamIndex", 0 },
+                { "ActiveTeam", -1 },
+                { "ScoreTick", 0 }
+            };
+
+            for (int i = 0; i < AliasGameSettings.NumTeams; i++)
+                ht["Score_" + i] = 0;
+        //
+
+    PhotonNetwork.CurrentRoom.SetCustomProperties(ht);
+}
+
+
         RefreshPanels();
     }
     void Start()
     {
+        //
+        if (PhotonNetwork.InRoom && GameManager.Instance != null)
+            GameManager.Instance.ResetMatch(AliasGameSettings.NumTeams);
+        //
+        
         RefreshPanels();
+        GameManager.Instance.SetMicState(true);//test test test
     }
     public override void OnEnable()
     {
@@ -30,14 +58,13 @@ public class GameSceneManager : MonoBehaviourPunCallbacks
 
     public override void OnRoomPropertiesUpdate(Hashtable changedProps)
     {
-        //
+    
          if (changedProps.TryGetValue("Phase", out var ph) && (string)ph == "GameOver")
         {
             if (PhotonNetwork.IsMasterClient)
                 PhotonNetwork.LoadLevel("EndGameScene"); // exact scene name
             return;
         }
-        //
         if (changedProps.ContainsKey("Phase") ||
         changedProps.ContainsKey("ActiveTeam") ||
         changedProps.ContainsKey("NextTeamIndex"))
@@ -79,5 +106,33 @@ public class GameSceneManager : MonoBehaviourPunCallbacks
 
         return -1;
     }
+
+    //
+    public void ResetForNewMatch_Master()
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+        if (!PhotonNetwork.IsConnectedAndReady || !PhotonNetwork.InRoom || PhotonNetwork.CurrentRoom == null) return;
+
+        // Reset local (host)
+        if (GameManager.Instance != null)
+            GameManager.Instance.ResetMatch(AliasGameSettings.NumTeams);
+
+        // Reset room props (everyone will sync clean)
+        var ht = new Hashtable
+        {
+            { "Phase", "Scoreboard" },
+            { "NextTeamIndex", 0 },
+            { "ActiveTeam", -1 },
+            { "ScoreTick", 0 },
+            { "Timer", 0 }
+        };
+
+        for (int i = 0; i < AliasGameSettings.NumTeams; i++)
+            ht["Score_" + i] = 0;
+
+        PhotonNetwork.CurrentRoom.SetCustomProperties(ht);
+    }
+    //
+
 }
 

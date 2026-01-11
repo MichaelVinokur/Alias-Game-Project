@@ -48,8 +48,7 @@ public class ScoreboardManager : MonoBehaviourPunCallbacks
 
     public override void OnRoomPropertiesUpdate(ExitGames.Client.Photon.Hashtable changedProps)
     {
-        Debug.Log("[SBM] OnRoomPropertiesUpdate changedKeys=" +
-                  string.Join(",", changedProps.Keys.Cast<object>().Select(k => k.ToString())));
+        //Debug.Log("[SBM] OnRoomPropertiesUpdate changedKeys=" + string.Join(",", changedProps.Keys.Cast<object>().Select(k => k.ToString())));
 
         bool shouldRebuild =
             changedProps.ContainsKey("ScoreTick") ||       
