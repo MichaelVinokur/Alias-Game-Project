@@ -17,6 +17,8 @@ public class MusicManager : MonoBehaviour
 
         DontDestroyOnLoad(gameObject);
         audioSrc = GetComponent<AudioSource>();
+        audioSrc.mute = PlayerPrefs.GetInt("MusicMuted", 0) == 1;
+
 
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
@@ -49,4 +51,16 @@ public class MusicManager : MonoBehaviour
         if (!audioSrc) audioSrc = GetComponent<AudioSource>();
         if (audioSrc.isPlaying) audioSrc.Stop();
     }
+
+    public void ToggleMute()
+    {
+        if (!audioSrc)
+            audioSrc = GetComponent<AudioSource>();
+
+        bool newMute = !audioSrc.mute;
+        audioSrc.mute = newMute;
+
+        PlayerPrefs.SetInt("MusicMuted", newMute ? 1 : 0);
+    }
+
 }

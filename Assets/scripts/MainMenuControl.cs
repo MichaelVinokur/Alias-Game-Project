@@ -8,32 +8,6 @@ public class MainMenuControl : MonoBehaviour
     public void OnRulesButton() => rulesPanel.SetActive(true);
     public void OnCloseRulesButton() => rulesPanel.SetActive(false);
 
-    // public void OnRulesButton()
-    // {
-    //     Debug.Log("Rules button pressed");
-    //     rulesPanel.SetActive(true);
-    // }
-
-    // public void OnCloseRulesButton()
-    // {
-    //     rulesPanel.SetActive(false);
-    // }
-
-    // public void OnSameRoomButton()
-    // {
-    //     Debug.Log("Same Room button pressed");
-    //     GameManager.Instance.VoiceEnabled = false;
-    //     SceneManager.LoadScene("SameRoom");   // << IMPORTANT
-    // }
-
-
-    // public void OnOnlineButton()
-    // {
-    //     Debug.Log("Online button pressed");
-    //     GameManager.Instance.VoiceEnabled = true;
-    //     SceneManager.LoadScene("SameRoom");
-    // }
-
     public void OnSameRoomButton()
     {
         Debug.Log("Same Room button pressed");

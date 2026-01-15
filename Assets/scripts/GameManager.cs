@@ -58,48 +58,6 @@ public class GameManager : MonoBehaviour
         ResetDeck();
     }
 
-    // public void ApplyVoiceMode()
-    // {
-    //     // If you don't have PhotonVoiceNetwork in the project, stop here
-    //     if (PhotonVoiceNetwork.Instance == null)
-    //     {
-    //         Debug.LogWarning("[VOICE] PhotonVoiceNetwork.Instance is null (Voice prefab missing?)");
-    //         return;
-    //     }
-
-    //     var recorder = PhotonVoiceNetwork.Instance.PrimaryRecorder;
-
-    //     if (!VoiceEnabled)
-    //     {
-    //         // SAME ROOM => hard OFF
-    //         if (recorder != null)
-    //         {
-    //             recorder.DebugEchoMode = false;
-    //             recorder.TransmitEnabled = false;
-    //             recorder.RecordingEnabled = false;
-    //         }
-
-    //         if (PhotonVoiceNetwork.Instance.ClientState == Photon.Realtime.ClientState.Joined)
-    //             PhotonVoiceNetwork.Instance.Disconnect();
-
-    //         DisableAllSpeakers();
-    //         return;
-    //     }
-
-    //     // ONLINE => ON
-    //     if (PhotonNetwork.InRoom && PhotonVoiceNetwork.Instance.ClientState != Photon.Realtime.ClientState.Joined)
-    //     {
-    //         PhotonVoiceNetwork.Instance.ConnectAndJoinRoom();
-    //     }
-
-    //     if (recorder != null)
-    //     {
-    //         recorder.DebugEchoMode = false;   // important
-    //         recorder.RecordingEnabled = true; // mic can be enabled later by RoundManager
-    //         recorder.TransmitEnabled = false; // default OFF until active team
-    //     }
-    // }
-
     public void SetMicState(bool enabled)
     {
         var recorder = FindObjectOfType<Recorder>();

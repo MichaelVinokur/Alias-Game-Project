@@ -16,6 +16,13 @@ public class RoundManager : MonoBehaviourPunCallbacks
     public TMP_Text timerText;
     public Button correctButton;
     public Button penaltyButton;
+    public TMP_Text spectatorWordText; 
+
+
+    [Header("Cheating System UI")]
+    public GameObject hostDecisionPanel; 
+    public GameObject gamePausedOverlay; 
+    public Button reportCheatButton;   
 
     [Header("Audio")]
     public AudioSource audioSource;
@@ -32,6 +39,8 @@ public class RoundManager : MonoBehaviourPunCallbacks
     private bool isReader = false;
     
     private float nextTimerSync;
+
+    //private int readerActorNumber = -1;
 
    void Start()
     {
@@ -86,7 +95,67 @@ public class RoundManager : MonoBehaviourPunCallbacks
             EndRound();
     }
 
+    public void OnReportCheatClicked()
+    {
+        photonView.RPC("RPC_PauseForCheatCheck", RpcTarget.All, PhotonNetwork.LocalPlayer.NickName);
+    }
 
+    [PunRPC]
+    void RPC_PauseForCheatCheck(string reporterName)
+    {
+        running = false; 
+
+        // --- הוספת לוגיקת המיקרופונים לשלב העצירה ---
+        // פותחים מיקרופונים ורמקולים לכולם (רק אם אנחנו במצב Online)
+        if (GameManager.Instance != null && GameManager.Instance.VoiceEnabled)
+        {
+            SetMicEnabled(true);      // כולם יכולים לדבר
+            SetSpeakersEnabled(true); // כולם יכולים לשמוע
+        }
+        // ------------------------------------------
+
+        if (PhotonNetwork.IsMasterClient)
+        {
+            if (hostDecisionPanel != null) hostDecisionPanel.SetActive(true);
+        }
+        else
+        {
+            if (gamePausedOverlay != null) gamePausedOverlay.SetActive(true);
+        }
+    }
+    
+    
+    public void HostDecision_ResumeNoPenalty()
+    {
+        photonView.RPC("RPC_ResumeGame", RpcTarget.All, false);
+    }
+
+    
+    public void HostDecision_ApplyPenaltyAndResume()
+    {
+        photonView.RPC("RPC_ResumeGame", RpcTarget.All, true);
+    }
+
+   
+
+    [PunRPC]
+    void RPC_ResumeGame(bool applyPenalty)
+    {
+        if (hostDecisionPanel != null) hostDecisionPanel.SetActive(false);
+        if (gamePausedOverlay != null) gamePausedOverlay.SetActive(false);
+
+        if (applyPenalty && PhotonNetwork.IsMasterClient)
+        {
+            photonView.RPC("RPC_RequestScoreDelta", RpcTarget.MasterClient, teamIndex, -1);
+        }
+
+        // --- החזרת המיקרופונים למצב הקודם ---
+        // מחזירים את מצב הדיבור רק לקבוצה שמשחקת כרגע (teamIndex)
+        ApplyVoiceByActiveTeam(teamIndex);
+        // ----------------------------------
+
+        running = true; // המשך הרצת הטיימר
+    }
 
     void PickReader()
     {
@@ -126,6 +195,7 @@ public class RoundManager : MonoBehaviourPunCallbacks
             playerNameText.text = reader.NickName + " is reading";
 
         isReader = PhotonNetwork.LocalPlayer.ActorNumber == readerActorNumber;
+        
 
         UpdateUIVisibility();
 
@@ -133,6 +203,7 @@ public class RoundManager : MonoBehaviourPunCallbacks
         {
             string w = GameManager.Instance.GetRandomWord();
             photonView.RPC("RPC_SetWord", RpcTarget.All, w);
+            
         }
 }
 
@@ -200,7 +271,16 @@ public class RoundManager : MonoBehaviourPunCallbacks
         {
             wordText.text = isReader ? w : "GUESS!";
         }
+        //
+        if (spectatorWordText != null)
+        {
+            
+            spectatorWordText.text = w; //"Current Word: " + 
+        }
+        //
     }
+   
+
 
     [PunRPC]
     void RPC_NewWord()
@@ -212,6 +292,7 @@ public class RoundManager : MonoBehaviourPunCallbacks
             photonView.RPC("RPC_SetWord", RpcTarget.All, w);
         }
     }
+
 
     [PunRPC]
     void RPC_GameOver()
@@ -246,6 +327,9 @@ public class RoundManager : MonoBehaviourPunCallbacks
         if (!PhotonNetwork.IsConnectedAndReady) return;
         if (!PhotonNetwork.InRoom) return;
         if (PhotonNetwork.CurrentRoom == null) return;
+        //
+        if (spectatorWordText != null) spectatorWordText.text = "";
+        //
 
         int next = GameManager.Instance.NextTeamIndex + 1;
         if (next >= GameManager.Instance.teams.Count)
@@ -393,13 +477,6 @@ public class RoundManager : MonoBehaviourPunCallbacks
         }
     }
 
-    // void SetSpeakersEnabled(bool enabled)
-    // {
-    //     CacheVoice();
-    //     if (speakers != null)
-    //         foreach (var s in speakers)
-    //             if (s != null) s.enabled = enabled;
-    // }
     void SetSpeakersEnabled(bool enabled)
     {
         CacheVoice();
@@ -421,28 +498,6 @@ public class RoundManager : MonoBehaviourPunCallbacks
         }
     }
 
-
-
-    // void ApplyVoiceByActiveTeam(int activeTeam)
-    // {
-        
-    //     if (GameManager.Instance == null || !GameManager.Instance.VoiceEnabled)
-    //     {
-    //         Debug.Log("[VOICE] Mode is SameRoom or Voice Disabled. Forcing OFF.");
-    //         SetMicEnabled(false);
-    //         SetSpeakersEnabled(false);
-    //         return; 
-    //     }
-
-        
-    //     SetSpeakersEnabled(true);
-
-    //     int myTeam = GetPlayerTeam(PhotonNetwork.LocalPlayer);
-    //     bool amActiveTeam = (myTeam == activeTeam);
-        
-        
-    //     SetMicEnabled(amActiveTeam);
-    // }
     void ApplyVoiceByActiveTeam(int activeTeam)
     {
         // SameRoom mode => always off

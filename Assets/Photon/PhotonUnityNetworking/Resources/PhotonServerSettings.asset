@@ -48,6 +48,8 @@ MonoBehaviour:
   - RPC_RequestScoreDelta
   - RPC_SetWord
   - RPC_SyncReader
+  - RPC_PauseForCheatCheck
+  - RPC_ResumeGame
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 0
