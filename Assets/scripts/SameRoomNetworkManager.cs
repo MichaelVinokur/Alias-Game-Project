@@ -87,7 +87,7 @@ public class SameRoomNetworkManager : MonoBehaviourPunCallbacks
     private void ExecuteHostLogic()
     {
         PhotonNetwork.NickName = savedName;
-        string roomCode = Random.Range(100000, 999999).ToString();
+        string roomCode = Random.Range(100, 999).ToString();
         RoomOptions options = new RoomOptions { MaxPlayers = 8 };
         PhotonNetwork.CreateRoom(roomCode, options);
 
@@ -155,7 +155,7 @@ public class SameRoomNetworkManager : MonoBehaviourPunCallbacks
     public static void ExecuteHostNow()
     {
         PhotonNetwork.NickName = pendingName;
-        string roomCode = Random.Range(100000, 999999).ToString();
+        string roomCode = Random.Range(100, 999).ToString();
         RoomOptions options = new RoomOptions { MaxPlayers = 8 };
         PhotonNetwork.CreateRoom(roomCode, options);
     }

@@ -12,4 +12,6 @@ public static class AliasGameSettings
 
     // number of teams (default = 2)
     public static int NumTeams = 2;
+
+    public static int Score = 60;
 }

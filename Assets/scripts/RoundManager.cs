@@ -6,17 +6,17 @@ using Photon.Pun;
 using System.Collections.Generic;
 using System.Linq;
 using Photon.Voice.Unity;//online
-
+using RTLTMPro;
 
 public class RoundManager : MonoBehaviourPunCallbacks
 {
     [Header("UI")]
-    public TMP_Text wordText;
+    public RTLTextMeshPro wordText;
     public TMP_Text playerNameText;
     public TMP_Text timerText;
     public Button correctButton;
     public Button penaltyButton;
-    public TMP_Text spectatorWordText; 
+    public RTLTextMeshPro spectatorWordText; 
 
 
     [Header("Cheating System UI")]
@@ -28,6 +28,7 @@ public class RoundManager : MonoBehaviourPunCallbacks
     public AudioSource audioSource;
     public AudioClip correctSFX;
     public AudioClip wrongSFX;
+    public AudioClip fiveSecSFX;
     private Recorder recorder;//online
     private Speaker[] speakers;//online
 
@@ -39,10 +40,9 @@ public class RoundManager : MonoBehaviourPunCallbacks
     private bool isReader = false;
     
     private float nextTimerSync;
+    private bool warnedLastFive = false;
 
-    //private int readerActorNumber = -1;
-
-   void Start()
+    void Start()
     {
         InitRoundFromRoomProps();
         Debug.Log($"[RM] Start running. activeSelf={gameObject.activeSelf} room={PhotonNetwork.InRoom}");
@@ -62,21 +62,26 @@ public class RoundManager : MonoBehaviourPunCallbacks
 
     void Update()
     {
-        
         if (timerText != null &&
             PhotonNetwork.InRoom &&
-            PhotonNetwork.CurrentRoom != null &&// a change
+            PhotonNetwork.CurrentRoom != null &&
             PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("Timer", out var tv))
         {
             timerText.text = tv.ToString();
         }
 
-       
         if (!PhotonNetwork.IsMasterClient) return;
         if (!running) return;
 
         timer -= Time.deltaTime;
-        
+
+        // ✅ 5-seconds warning (once)
+        if (!warnedLastFive && timer <= 5f && timer > 0f)
+        {
+            warnedLastFive = true;
+            PlayLastFiveWarning();
+        }
+
         if (Time.time >= nextTimerSync)
         {
             nextTimerSync = Time.time + 0.25f;
@@ -84,16 +89,16 @@ public class RoundManager : MonoBehaviourPunCallbacks
             if (PhotonNetwork.IsConnectedAndReady && PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom != null)
             {
                 PhotonNetwork.CurrentRoom.SetCustomProperties(new ExitGames.Client.Photon.Hashtable
-                {
-                    { "Timer", Mathf.CeilToInt(timer) }
-                });
+            {
+                { "Timer", Mathf.CeilToInt(timer) }
+            });
             }
         }
-
 
         if (timer <= 0f)
             EndRound();
     }
+
 
     public void OnReportCheatClicked()
     {
@@ -414,6 +419,8 @@ public class RoundManager : MonoBehaviourPunCallbacks
         var props = PhotonNetwork.CurrentRoom.CustomProperties;
         if (!props.TryGetValue("Phase", out var phaseObj) || (string)phaseObj != "Round") return;
         if (!props.TryGetValue("ActiveTeam", out var activeObj)) return;
+        
+        warnedLastFive = false;
 
         int activeTeam = (int)activeObj;
         int myTeam = GetPlayerTeam(PhotonNetwork.LocalPlayer);
@@ -517,5 +524,16 @@ public class RoundManager : MonoBehaviourPunCallbacks
         bool amActiveTeam = (myTeam == activeTeam);
         SetMicEnabled(amActiveTeam);
     }
+
+    void PlayLastFiveWarning()
+    {
+        if (audioSource != null && fiveSecSFX != null)
+            audioSource.PlayOneShot(fiveSecSFX); 
+
+        #if UNITY_ANDROID || UNITY_IOS
+        Handheld.Vibrate();
+        #endif
+    }
+
 
 }

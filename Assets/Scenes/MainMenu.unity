@@ -2405,7 +2405,7 @@ MonoBehaviour:
   settings:
     roundSeconds: 60
     numberOfTeams: 2
-    targetScore: 10
+    targetScore: 60
   teams: []
   state:
     currentTeamIndex: 0
@@ -2418,6 +2418,8 @@ MonoBehaviour:
     fileName: movies_tv
   - categoryName: Nature
     fileName: animals
+  - categoryName: Hebrew
+    fileName: hebrew
   currentCategory:
     categoryName: 
     fileName: 

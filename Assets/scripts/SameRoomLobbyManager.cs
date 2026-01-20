@@ -18,6 +18,7 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
     public GameObject settingsPanel;
     public TMP_Dropdown roundTimeDropdown;
     public TMP_Dropdown teamsDropdown;
+    public TMP_Dropdown scoreDropdown;
     public TMP_Text settingsSummaryText;
     
     // Category Dropdown
@@ -85,6 +86,9 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
         if (props.ContainsKey("NumTeams"))
             AliasGameSettings.NumTeams = (int)props["NumTeams"];
 
+        if (props.ContainsKey("Score"))
+            AliasGameSettings.Score = (int)props["Score"];
+
         if (props.ContainsKey("Category"))
             GameManager.Instance.SetCategory((int)props["Category"]);
 
@@ -150,6 +154,18 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
                 }
             }
         }
+        if (scoreDropdown != null)
+        {
+            for (int i = 0; i < scoreDropdown.options.Count; i++)
+            {
+                if (int.TryParse(scoreDropdown.options[i].text, out int v) &&
+                    v == AliasGameSettings.Score)
+                {
+                    scoreDropdown.value = i;
+                    break;
+                }
+            }
+        }
     }
 
     // Show Category Name
@@ -164,7 +180,8 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
             }
 
             settingsSummaryText.text =
-                $"Round: {AliasGameSettings.RoundTimeSeconds}s   •   Teams: {AliasGameSettings.NumTeams}\nCategory: {categoryName}";
+                $"Round: {AliasGameSettings.RoundTimeSeconds}s • Teams: {AliasGameSettings.NumTeams} • Score: {AliasGameSettings.Score} \n " +
+                $"Category: {categoryName}";
         }
     }
 
@@ -189,12 +206,16 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
 
         int newRoundTime = AliasGameSettings.RoundTimeSeconds;
         int newNumTeams = AliasGameSettings.NumTeams;
+        int newScore = AliasGameSettings.Score;
 
         if (roundTimeDropdown != null)
             int.TryParse(roundTimeDropdown.options[roundTimeDropdown.value].text, out newRoundTime);
 
         if (teamsDropdown != null)
             int.TryParse(teamsDropdown.options[teamsDropdown.value].text, out newNumTeams);
+
+        if (scoreDropdown != null)
+            int.TryParse(scoreDropdown.options[scoreDropdown.value].text, out newScore);
 
         if (categoryDropdown != null && GameManager.Instance != null)
         {
@@ -206,7 +227,8 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
         {
             { "RoundTime", newRoundTime },
             { "NumTeams", newNumTeams },
-            { "Category", categoryDropdown.value }
+            { "Category", categoryDropdown.value },
+            { "Score", newScore }
         };
         PhotonNetwork.CurrentRoom.SetCustomProperties(props);
 
@@ -222,6 +244,9 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
 
         if (changedProps.ContainsKey("NumTeams"))
             AliasGameSettings.NumTeams = (int)changedProps["NumTeams"];
+
+        if (changedProps.ContainsKey("Score"))
+            AliasGameSettings.Score = (int)changedProps["Score"];
 
         if (changedProps.ContainsKey("Category"))
             GameManager.Instance.SetCategory((int)changedProps["Category"]);
@@ -334,7 +359,9 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
 
         // 3. Create GameManager teams
         GameManager.Instance.InitializeTeams(AliasGameSettings.NumTeams);
-        
+
+        GameManager.Instance.settings.targetScore = AliasGameSettings.Score;
+
         // 4. Assign players to teams
         foreach (Player p in PhotonNetwork.PlayerList)
         {
@@ -348,6 +375,7 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
                 t.players.Add(info);
             }
         }
+
         PhotonNetwork.CurrentRoom.SetCustomProperties(new ExitGames.Client.Photon.Hashtable
         {
             { "NextTeamIndex", 0 }

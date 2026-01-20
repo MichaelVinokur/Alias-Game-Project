@@ -26,6 +26,7 @@ public class GameManager : MonoBehaviour
     // Shortcuts
     public int RoundSeconds => settings.roundSeconds;
     public int NumberOfTeams => settings.numberOfTeams;
+    public int TargetScore => settings.targetScore;
 
     public int NextTeamIndex
     {
