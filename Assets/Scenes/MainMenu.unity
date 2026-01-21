@@ -2413,16 +2413,27 @@ MonoBehaviour:
     selectedCategoryIndex: 0
   categories:
   - categoryName: General
-    fileName: general
+    fileNameEasy: General_Easy
+    fileNameMedium: General_Medium
+    fileNameHard: General_Hard
   - categoryName: Movies & TV
-    fileName: movies_tv
+    fileNameEasy: Movies_Easy
+    fileNameMedium: Movies_Medium
+    fileNameHard: Movies_Hard
   - categoryName: Nature
-    fileName: animals
+    fileNameEasy: Nature_Easy
+    fileNameMedium: Nature_Medium
+    fileNameHard: Nature_Hard
   - categoryName: Hebrew
-    fileName: hebrew
+    fileNameEasy: Hebrew_Easy
+    fileNameMedium: Hebrew_Medium
+    fileNameHard: Hebrew_Hard
   currentCategory:
     categoryName: 
-    fileName: 
+    fileNameEasy: 
+    fileNameMedium: 
+    fileNameHard: 
+  selectedDifficulty: 0
 --- !u!1 &6364183771153855414
 GameObject:
   m_ObjectHideFlags: 0

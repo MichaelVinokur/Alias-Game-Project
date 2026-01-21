@@ -1,9 +1,9 @@
 {
-    "m_SelectedDeviceId": "emulator-5554",
+    "m_SelectedDeviceId": "RFCT306PM7D",
     "m_SelectedProcess": {
-        "deviceId": "emulator-5554",
+        "deviceId": "RFCT306PM7D",
         "name": "com.MaorMisha.Alias",
-        "processId": 17030,
+        "processId": 19191,
         "exited": false
     },
     "m_SelectedPriority": 0,
@@ -444,6 +444,30 @@
             "deviceId": "RFCT306PM7D",
             "name": "com.MaorMisha.Alias",
             "processId": 4647,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCT306PM7D",
+            "name": "com.MaorMisha.Alias",
+            "processId": 28906,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCT306PM7D",
+            "name": "com.MaorMisha.Alias",
+            "processId": 21469,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCT306PM7D",
+            "name": "com.MaorMisha.Alias",
+            "processId": 11812,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCT306PM7D",
+            "name": "com.MaorMisha.Alias",
+            "processId": 19191,
             "exited": false
         },
         {

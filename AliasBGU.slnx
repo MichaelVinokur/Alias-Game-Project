@@ -8,11 +8,14 @@
   <Project Path="PhotonVoice.PUN.Editor.csproj" />
   <Project Path="PhotonVoice.csproj" />
   <Project Path="PhotonUnityNetworking.Utilities.csproj" />
+  <Project Path="RTLTMPro.csproj" />
+  <Project Path="RTLTMPro-Tests.csproj" />
   <Project Path="PunDemos.DemoHubEditor.csproj" />
   <Project Path="PunDemos.DemoSlotcarEditor.csproj" />
   <Project Path="PhotonChat.csproj" />
   <Project Path="MicAmplifierEditor.Editor.csproj" />
   <Project Path="PhotonUnityNetworking.Utilities.PhotonPlayer.Editor.csproj" />
+  <Project Path="RTLTMPro-Editor.csproj" />
   <Project Path="PhotonVoice.PUN.csproj" />
   <Project Path="Voice.FMOD.Editor.csproj" />
   <Project Path="PhotonVoice.Editor.csproj" />

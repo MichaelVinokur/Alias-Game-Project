@@ -27,12 +27,15 @@ public class GameManager : MonoBehaviour
     public int RoundSeconds => settings.roundSeconds;
     public int NumberOfTeams => settings.numberOfTeams;
     public int TargetScore => settings.targetScore;
+    public enum Difficulty { Easy, Medium, Hard }
 
     public int NextTeamIndex
     {
         get => state.nextTeamIndex;
         set => state.nextTeamIndex = value;
     }
+
+    public Difficulty selectedDifficulty = Difficulty.Easy; // Default difficulty
 
     private void Awake()
     {
@@ -110,39 +113,67 @@ public class GameManager : MonoBehaviour
     // ==============================
     public void SetCategory(int index)
     {
-        if (categories == null || categories.Length == 0)
-        {
-            Debug.LogError("No categories defined!");
-            return;
-        }
+        if (categories == null || categories.Length == 0) return;
 
-        if (index < 0 || index >= categories.Length)
-            index = 0;
+        if (index < 0 || index >= categories.Length) index = 0;
 
         state.selectedCategoryIndex = index;
         currentCategory = categories[index];
-        LoadCurrentCategoryWords();
+        
+        LoadCurrentCategoryWords(); 
         ResetDeck();
+    }
+
+    public void SetDifficulty(int difficultyIndex)
+    {
+        
+        selectedDifficulty = (Difficulty)difficultyIndex;
+        
+       
+        if (currentCategory != null)
+        {
+            LoadCurrentCategoryWords();
+            ResetDeck();
+        }
     }
 
     private void LoadCurrentCategoryWords()
     {
-        if (currentCategory == null || string.IsNullOrEmpty(currentCategory.fileName))
+        if (currentCategory == null) return;
+
+        string fileToLoad = "";
+
+        switch (selectedDifficulty)
         {
-            Debug.LogError("GameManager: currentCategory or fileName is null!");
+            case Difficulty.Easy: 
+                fileToLoad = currentCategory.fileNameEasy; 
+                break;
+            case Difficulty.Medium: 
+                fileToLoad = currentCategory.fileNameMedium; 
+                break;
+            case Difficulty.Hard: 
+                fileToLoad = currentCategory.fileNameHard; 
+                break;
+        }
+
+        // בדיקה שהשדה ב-Inspector אינו ריק
+        if (string.IsNullOrEmpty(fileToLoad))
+        {
+            Debug.LogError($"[GameManager] No file assigned for {selectedDifficulty} in {currentCategory.categoryName}");
             currentWords = new List<string>();
             return;
         }
 
-        currentWords = WordBank.LoadCategory(currentCategory.fileName);
+        // טעינת המילים מה-WordBank
+        currentWords = WordBank.LoadCategory(fileToLoad);
 
         if (currentWords.Count == 0)
         {
-            Debug.LogError($"GameManager: FAILED to load words from Resources/Words/{currentCategory.fileName}");
+            Debug.LogError($"[GameManager] FAILED to load words from: Resources/Words/{fileToLoad}");
         }
         else
         {
-            Debug.Log($"GameManager: Successfully loaded {currentWords.Count} words for {currentCategory.categoryName}");
+            Debug.Log($"[GameManager] Successfully loaded {currentWords.Count} words for {currentCategory.categoryName} ({selectedDifficulty})");
         }
     }
 

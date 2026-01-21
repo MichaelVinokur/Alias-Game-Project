@@ -24,6 +24,8 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
     // Category Dropdown
     public TMP_Dropdown categoryDropdown;
 
+    public TMP_Dropdown difficultyDropdown;
+
     [Header("UI - Players Table")]
     public Transform teamTable;          // Reference to the UI container TeamTable
     public GameObject teamColumnPrefab;  
@@ -33,11 +35,6 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
 
     [Header("UI - Start Game Button")]
     public GameObject startGameButton;   // assign in inspector
-
-    //private Dictionary<Player, LobbyPlayerRow> playerRows =
-        //new Dictionary<Player, LobbyPlayerRow>();
-
-    // STATIC LOCK: This protects against duplicate scripts or double-clicks
     private static bool isGameStarting = false;
 
     void Start()
@@ -111,6 +108,16 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
 
         if (settingsButton != null) 
             settingsButton.SetActive(isHost);
+
+        if (difficultyDropdown != null)
+        {
+            difficultyDropdown.ClearOptions();
+            difficultyDropdown.AddOptions(new List<string> { "Easy", "Medium", "Hard" });
+            difficultyDropdown.value = (int)GameManager.Instance.selectedDifficulty;
+            difficultyDropdown.onValueChanged.AddListener(idx => {
+                if(PhotonNetwork.IsMasterClient) GameManager.Instance.SetDifficulty(idx);
+            });
+        }
     }
 
 
@@ -168,20 +175,20 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
         }
     }
 
-    // Show Category Name
     void UpdateSettingsSummaryLabel()
     {
         if (settingsSummaryText != null)
         {
             string categoryName = "None";
             if (GameManager.Instance != null && GameManager.Instance.currentCategory != null)
-            {
                 categoryName = GameManager.Instance.currentCategory.categoryName;
-            }
+
+           
+            string difficultyStr = GameManager.Instance.selectedDifficulty.ToString();
 
             settingsSummaryText.text =
                 $"Round: {AliasGameSettings.RoundTimeSeconds}s • Teams: {AliasGameSettings.NumTeams} • Score: {AliasGameSettings.Score} \n " +
-                $"Category: {categoryName}";
+                $"Category: {categoryName} • Difficulty: {difficultyStr}";
         }
     }
 
@@ -228,6 +235,7 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
             { "RoundTime", newRoundTime },
             { "NumTeams", newNumTeams },
             { "Category", categoryDropdown.value },
+            { "Difficulty", difficultyDropdown.value },
             { "Score", newScore }
         };
         PhotonNetwork.CurrentRoom.SetCustomProperties(props);
@@ -250,6 +258,13 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
 
         if (changedProps.ContainsKey("Category"))
             GameManager.Instance.SetCategory((int)changedProps["Category"]);
+        
+        if (changedProps.ContainsKey("Difficulty"))
+        {
+            int diffIdx = (int)changedProps["Difficulty"];
+            if (difficultyDropdown != null) difficultyDropdown.value = diffIdx;
+            GameManager.Instance.SetDifficulty(diffIdx);
+        }
 
         InitDropdownValues();
         UpdateSettingsSummaryLabel();

@@ -79,7 +79,7 @@ public class RoundManager : MonoBehaviourPunCallbacks
         if (!warnedLastFive && timer <= 5f && timer > 0f)
         {
             warnedLastFive = true;
-            PlayLastFiveWarning();
+            photonView.RPC("RPC_PlayLastFiveWarning", RpcTarget.All);
         }
 
         if (Time.time >= nextTimerSync)
@@ -525,7 +525,8 @@ public class RoundManager : MonoBehaviourPunCallbacks
         SetMicEnabled(amActiveTeam);
     }
 
-    void PlayLastFiveWarning()
+    [PunRPC] 
+    void RPC_PlayLastFiveWarning() 
     {
         if (audioSource != null && fiveSecSFX != null)
             audioSource.PlayOneShot(fiveSecSFX); 
