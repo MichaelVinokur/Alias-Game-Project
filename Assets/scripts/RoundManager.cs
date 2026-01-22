@@ -18,6 +18,8 @@ public class RoundManager : MonoBehaviourPunCallbacks
     public Button penaltyButton;
     public RTLTextMeshPro spectatorWordText; 
 
+    public GameObject startRoundButton;
+
 
     [Header("Cheating System UI")]
     public GameObject hostDecisionPanel; 
@@ -44,6 +46,7 @@ public class RoundManager : MonoBehaviourPunCallbacks
 
     void Start()
     {
+
         InitRoundFromRoomProps();
         Debug.Log($"[RM] Start running. activeSelf={gameObject.activeSelf} room={PhotonNetwork.InRoom}");
         var r = Object.FindAnyObjectByType<Recorder>(FindObjectsInactive.Include);
@@ -534,6 +537,15 @@ public class RoundManager : MonoBehaviourPunCallbacks
         #if UNITY_ANDROID || UNITY_IOS
         Handheld.Vibrate();
         #endif
+    }
+
+    void UpdateHostControls()
+    {
+        if (startRoundButton != null)
+        {
+        
+            startRoundButton.SetActive(PhotonNetwork.IsMasterClient && !running);
+        }
     }
 
 

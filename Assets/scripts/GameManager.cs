@@ -1,12 +1,14 @@
 using System.Collections.Generic;
 using UnityEngine;
+using Photon.Pun;
+using Photon.Realtime;
 using Photon.Voice.Unity;
-using Photon.Voice.PUN;
+using ExitGames.Client.Photon;
 
-public class GameManager : MonoBehaviour
+public class GameManager : MonoBehaviourPunCallbacks
 {
     public static GameManager Instance;
-    public bool VoiceEnabled; // online
+    public bool VoiceEnabled;
 
     [Header("Settings")]
     public GameSettings settings = new GameSettings();
@@ -17,124 +19,207 @@ public class GameManager : MonoBehaviour
 
     [Header("Word Categories")]
     public WordCategory[] categories;
-    public WordCategory currentCategory;   // ← MUST BE PUBLIC
+    public WordCategory currentCategory;
 
-    // Loaded words for the currently selected category
+    public enum Difficulty { Easy, Medium, Hard }
+    public Difficulty selectedDifficulty = Difficulty.Easy;
+
     private List<string> currentWords = new List<string>();
     private List<string> deck = new List<string>();
     private int deckIndex = 0;
-    // Shortcuts
+
     public int RoundSeconds => settings.roundSeconds;
     public int NumberOfTeams => settings.numberOfTeams;
     public int TargetScore => settings.targetScore;
-    public enum Difficulty { Easy, Medium, Hard }
+    public int NextTeamIndex { get => state.nextTeamIndex; set => state.nextTeamIndex = value; }
 
-    public int NextTeamIndex
-    {
-        get => state.nextTeamIndex;
-        set => state.nextTeamIndex = value;
-    }
-
-    public Difficulty selectedDifficulty = Difficulty.Easy; // Default difficulty
 
     private void Awake()
     {
-        if (Instance != null)
-        {
-            Destroy(gameObject);
-            return;
-        }
-
+        if (Instance != null) { Destroy(gameObject); return; }
         Instance = this;
         DontDestroyOnLoad(gameObject);
+    }
 
-        if (categories == null || categories.Length == 0)
-            return;
+    private void Start()
+    {
+        if (PhotonNetwork.InRoom)
+        {
+            
+            ReclaimTeam();
+            
+            SyncStateFromRoom();
+        }
+        else
+        {
+            
+            if (currentWords == null || currentWords.Count == 0)
+            {
+                
+                if (categories != null && categories.Length > 0)
+                {
+                    state.selectedCategoryIndex = 0;
+                    currentCategory = categories[0];
+                    selectedDifficulty = Difficulty.Easy;
+                    LoadCurrentCategoryWords();
+                }
+            }
+        }
+    }
 
-        // Load saved category index
-        int index = state.selectedCategoryIndex;
+    // הוסף את הפונקציה הזו בתוך GameManager (בסוף, לפני הסוגר האחרון)
+    void ReclaimTeam()
+    {
+        if (PhotonNetwork.LocalPlayer.CustomProperties.ContainsKey("team")) return;
 
-        if (index < 0 || index >= categories.Length)
-            index = 0;
+        string myName = PhotonNetwork.LocalPlayer.NickName;
+        
+        for (int i = 0; i < teams.Count; i++)
+        {
+            foreach (var p in teams[i].players)
+            {
+                
+                if (p.nickname == myName) 
+                {
+                    Debug.Log($"[GameManager] Welcome back {myName}! Re-assigning to Team {i}");
+                    
+                    ExitGames.Client.Photon.Hashtable props = new ExitGames.Client.Photon.Hashtable();
+                    props.Add("team", i);
+                    PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+                    return;
+                }
+            }
+        }
+    }
 
+    // private void Start()
+    // {
+    //     // אם התעוררנו וכבר יש חדר פעיל (למשל אחרי התנתקות), נסנכרן מיד
+    //     if (PhotonNetwork.InRoom)
+    //     {
+    //         SyncStateFromRoom();
+    //     }
+    //     else
+    //     {
+    //         // טעינת ברירת מחדל אם אין חיבור
+    //         LoadDefaultWords();
+    //     }
+    // }
+
+    
+    public override void OnJoinedRoom()
+    {
+        base.OnJoinedRoom();
+        SyncStateFromRoom();
+    }
+
+    // עדכון תמידי מהענן
+    public override void OnRoomPropertiesUpdate(Hashtable propertiesThatChanged)
+    {
+        SyncScoresFromRoomProps(propertiesThatChanged);
+        
+        // עדכון הקטגוריה והקושי בזמן אמת אם השתנו
+        if (propertiesThatChanged.ContainsKey("Category")) SetCategory((int)propertiesThatChanged["Category"]);
+        if (propertiesThatChanged.ContainsKey("Difficulty")) SetDifficulty((int)propertiesThatChanged["Difficulty"]);
+        if (propertiesThatChanged.ContainsKey("NextTeamIndex")) NextTeamIndex = (int)propertiesThatChanged["NextTeamIndex"];
+    }
+
+    // החלפת הוסט - ההוסט החדש לוקח פיקוד ומוודא סנכרון
+    public override void OnMasterClientSwitched(Player newMasterClient)
+    {
+        if (PhotonNetwork.LocalPlayer == newMasterClient)
+        {
+            Debug.Log("[GameManager] I am the new Host! Taking control.");
+            SyncStateFromRoom();
+        }
+    }
+
+    // --- הפונקציה הקריטית לשחזור מצב ---
+    public void SyncStateFromRoom()
+    {
+        if (PhotonNetwork.CurrentRoom == null) return;
+        
+        var props = PhotonNetwork.CurrentRoom.CustomProperties;
+        
+        // 1. קטגוריות וקושי
+        if (categories != null && categories.Length > 0)
+        {
+            int catIdx = props.ContainsKey("Category") ? (int)props["Category"] : 0;
+            if (props.ContainsKey("Difficulty")) selectedDifficulty = (Difficulty)props["Difficulty"];
+            
+            // טעינת המילים בלי לאפס הכל
+            if(currentCategory != categories[catIdx])
+                SetCategory(catIdx); 
+            else
+                LoadCurrentCategoryWords(); // רק רענון מילים
+        }
+
+        // 2. שחזור מספר הצוותים והניקוד שלהם
+        int numTeams = props.ContainsKey("NumTeams") ? (int)props["NumTeams"] : 2;
+        
+        // בניית הצוותים אם הם לא קיימים
+        InitializeTeams(numTeams);
+
+        // 3. משיכת הניקוד העדכני (כדי שלא יהיה 0)
+        SyncScoresFromRoomProps(props);
+
+        // 4. מי הקבוצה שמשחקת עכשיו?
+        if (props.ContainsKey("NextTeamIndex"))
+            NextTeamIndex = (int)props["NextTeamIndex"];
+            
+        // 5. בדיקה האם המשחק כבר רץ - אם כן, להודיע למי שמאזין (כמו ה-UI)
+        if (props.ContainsKey("GameStarted") && (bool)props["GameStarted"])
+        {
+            // אם אנחנו בלובי, זה יגרום ללובי לזרוק אותנו למשחק
+            // לוגיקה זו תטופל ב-LobbyManager
+        }
+    }
+
+    void SyncScoresFromRoomProps(Hashtable props)
+    {
+        for (int i = 0; i < teams.Count; i++)
+        {
+            string key = "Score_" + i;
+            if (props.ContainsKey(key))
+            {
+                teams[i].score = (int)props[key];
+            }
+        }
+    }
+
+    // --- שאר הפונקציות שלך ---
+
+    void LoadDefaultWords()
+    {
+        if (currentWords == null || currentWords.Count == 0)
+        {
+            if (categories != null && categories.Length > 0)
+            {
+                if (state.selectedCategoryIndex < 0) state.selectedCategoryIndex = 0;
+                currentCategory = categories[state.selectedCategoryIndex];
+                selectedDifficulty = Difficulty.Easy;
+                LoadCurrentCategoryWords();
+                ResetDeck();
+            }
+        }
+    }
+
+    public void SetCategory(int index)
+    {
+        if (categories == null || categories.Length == 0) return;
+        if (index < 0 || index >= categories.Length) index = 0;
+
+        state.selectedCategoryIndex = index;
         currentCategory = categories[index];
         LoadCurrentCategoryWords();
         ResetDeck();
     }
 
-    public void SetMicState(bool enabled)
-    {
-        var recorder = FindObjectOfType<Recorder>();
-        if (recorder == null)
-        {
-            Debug.Log("[VOICE] Recorder not found");
-            return;
-        }
-
-        recorder.RecordingEnabled = enabled;
-        recorder.TransmitEnabled = enabled;
-
-        Debug.Log($"[VOICE] Mic set to {enabled}");
-    }
-    public void ForceDisableVoiceEverywhere()
-    {
-        // Disable ALL recorders (sometimes you have more than one)
-        var recorders = Object.FindObjectsByType<Recorder>(
-            FindObjectsInactive.Include,
-            FindObjectsSortMode.None
-        );
-
-        foreach (var r in recorders)
-        {
-            if (r == null) continue;
-            r.TransmitEnabled = false;
-            r.RecordingEnabled = false;
-        }
-
-        // Disable ALL speakers
-        var speakers = Object.FindObjectsByType<Speaker>(
-            FindObjectsInactive.Include,
-            FindObjectsSortMode.None
-        );
-
-        foreach (var s in speakers)
-            if (s != null) s.enabled = false;
-    }
-    public void DisableAllSpeakers()
-    {
-        var speakers = Object.FindObjectsByType<Speaker>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-        foreach (var s in speakers)
-            if (s != null) s.enabled = false;
-    }
-
-
-    // ==============================
-    //        CATEGORY SYSTEM
-    // ==============================
-    public void SetCategory(int index)
-    {
-        if (categories == null || categories.Length == 0) return;
-
-        if (index < 0 || index >= categories.Length) index = 0;
-
-        state.selectedCategoryIndex = index;
-        currentCategory = categories[index];
-        
-        LoadCurrentCategoryWords(); 
-        ResetDeck();
-    }
-
     public void SetDifficulty(int difficultyIndex)
     {
-        
         selectedDifficulty = (Difficulty)difficultyIndex;
-        
-       
-        if (currentCategory != null)
-        {
-            LoadCurrentCategoryWords();
-            ResetDeck();
-        }
+        LoadCurrentCategoryWords();
+        ResetDeck();
     }
 
     private void LoadCurrentCategoryWords()
@@ -142,39 +227,15 @@ public class GameManager : MonoBehaviour
         if (currentCategory == null) return;
 
         string fileToLoad = "";
-
         switch (selectedDifficulty)
         {
-            case Difficulty.Easy: 
-                fileToLoad = currentCategory.fileNameEasy; 
-                break;
-            case Difficulty.Medium: 
-                fileToLoad = currentCategory.fileNameMedium; 
-                break;
-            case Difficulty.Hard: 
-                fileToLoad = currentCategory.fileNameHard; 
-                break;
+            case Difficulty.Easy: fileToLoad = currentCategory.fileNameEasy; break;
+            case Difficulty.Medium: fileToLoad = currentCategory.fileNameMedium; break;
+            case Difficulty.Hard: fileToLoad = currentCategory.fileNameHard; break;
         }
 
-        // בדיקה שהשדה ב-Inspector אינו ריק
-        if (string.IsNullOrEmpty(fileToLoad))
-        {
-            Debug.LogError($"[GameManager] No file assigned for {selectedDifficulty} in {currentCategory.categoryName}");
-            currentWords = new List<string>();
-            return;
-        }
-
-        // טעינת המילים מה-WordBank
+        if (string.IsNullOrEmpty(fileToLoad)) return;
         currentWords = WordBank.LoadCategory(fileToLoad);
-
-        if (currentWords.Count == 0)
-        {
-            Debug.LogError($"[GameManager] FAILED to load words from: Resources/Words/{fileToLoad}");
-        }
-        else
-        {
-            Debug.Log($"[GameManager] Successfully loaded {currentWords.Count} words for {currentCategory.categoryName} ({selectedDifficulty})");
-        }
     }
 
     private void ResetDeck()
@@ -186,15 +247,8 @@ public class GameManager : MonoBehaviour
 
     public string GetRandomWord()
     {
-        if (deck == null || deck.Count == 0)
-            return "NO WORDS";
-
-        if (deckIndex >= deck.Count)
-        {
-            Shuffle(deck);
-            deckIndex = 0;
-        }
-
+        if (deck == null || deck.Count == 0) return "NO WORDS";
+        if (deckIndex >= deck.Count) { Shuffle(deck); deckIndex = 0; }
         return deck[deckIndex++];
     }
 
@@ -207,56 +261,70 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    public void SetMicState(bool enabled)
+    {
+        var recorder = FindObjectOfType<Recorder>();
+        if (recorder) { recorder.RecordingEnabled = enabled; recorder.TransmitEnabled = enabled; }
+    }
 
-    // ==============================
-    //        TEAM SYSTEM
-    // ==============================
+    public void ForceDisableVoiceEverywhere()
+    {
+        var recorders = Object.FindObjectsByType<Recorder>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (var r in recorders) { if (r != null) { r.TransmitEnabled = false; r.RecordingEnabled = false; } }
+        var speakers = Object.FindObjectsByType<Speaker>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (var s in speakers) if (s != null) s.enabled = false;
+    }
+
     public void InitializeTeams(int numberOfTeams)
     {
-        teams.Clear();
+        // הגנה: אם הצוותים כבר קיימים (שחזור), אל תאפס אותם!
+        if (teams.Count == numberOfTeams) return;
 
-        for (int i = 0; i < numberOfTeams; i++)
+        teams.Clear();
+        for (int i = 0; i < numberOfTeams; i++) { 
+            TeamInfo t = new TeamInfo(); 
+            t.teamName = $"Team {i + 1}"; 
+            t.score = 0; // אתחול ראשוני, ידרוס אותו מיד הסנכרון
+            teams.Add(t); 
+        }
+    }
+    
+    public void ResetMatch(int numberOfTeams)
+    {
+        InitializeTeams(numberOfTeams);
+        foreach (var t in teams) t.score = 0;
+        NextTeamIndex = 0;
+        
+        if (PhotonNetwork.IsMasterClient)
         {
-            TeamInfo t = new TeamInfo();
-            t.teamName = $"Team {i + 1}";
-            teams.Add(t);
+            Hashtable props = new Hashtable();
+            for(int i=0; i<numberOfTeams; i++) props.Add("Score_" + i, 0);
+            props.Add("NextTeamIndex", 0);
+            PhotonNetwork.CurrentRoom.SetCustomProperties(props);
         }
     }
 
     public void AddCorrectPoint(int teamIndex)
     {
-        
+        if (teamIndex >= teams.Count) return;
         teams[teamIndex].score++;
-
-        if (Photon.Pun.PhotonNetwork.IsMasterClient )//|| Photon.Pun.PhotonNetwork.LocalPlayer.IsLocal
+        if (PhotonNetwork.IsMasterClient)
         {
-            ExitGames.Client.Photon.Hashtable props = new ExitGames.Client.Photon.Hashtable();
-            props.Add("Score_" + teamIndex, teams[teamIndex].score);
-            Photon.Pun.PhotonNetwork.CurrentRoom.SetCustomProperties(props);
+            Hashtable props = new Hashtable { { "Score_" + teamIndex, teams[teamIndex].score } };
+            PhotonNetwork.CurrentRoom.SetCustomProperties(props);
         }
     }
 
-    public void AddPenalty(int teamIndex)
+    public void AddPenalty(int teamIndex) 
     {
+        if (teamIndex >= teams.Count) return;
         teams[teamIndex].AddScore(-1);
+        if (PhotonNetwork.IsMasterClient)
+        {
+            Hashtable props = new Hashtable { { "Score_" + teamIndex, teams[teamIndex].score } };
+            PhotonNetwork.CurrentRoom.SetCustomProperties(props);
+        }
     }
 
-    public bool CheckWin(int teamIndex)
-    {
-        return teams[teamIndex].score >= settings.targetScore;
-    }
-
-
-    // 
-    public void ResetMatch(int numberOfTeams)
-    {
-        if (teams == null || teams.Count != numberOfTeams)
-            InitializeTeams(numberOfTeams);
-
-        foreach (var t in teams)
-            t.score = 0;
-
-        NextTeamIndex = 0;
-    }
-    //
+    public bool CheckWin(int teamIndex) => teams[teamIndex].score >= settings.targetScore;
 }

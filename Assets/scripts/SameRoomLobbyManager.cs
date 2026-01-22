@@ -5,7 +5,6 @@ using Photon.Realtime;
 using TMPro;
 using ExitGames.Client.Photon;
 using Photon.Pun.UtilityScripts;
-using Photon.Voice.Unity;
 
 public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
 {
@@ -13,7 +12,6 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
     public TMP_Text roomCodeText;
 
     [Header("UI - Settings Window")]
-    
     public GameObject settingsButton;
     public GameObject settingsPanel;
     public TMP_Dropdown roundTimeDropdown;
@@ -21,95 +19,113 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
     public TMP_Dropdown scoreDropdown;
     public TMP_Text settingsSummaryText;
     
-    // Category Dropdown
     public TMP_Dropdown categoryDropdown;
-
     public TMP_Dropdown difficultyDropdown;
 
     [Header("UI - Players Table")]
-    public Transform teamTable;          // Reference to the UI container TeamTable
+    public Transform teamTable;          
     public GameObject teamColumnPrefab;  
     public GameObject playerNamePrefab;
     private List<TeamColumnUI> teamColumns = new List<TeamColumnUI>();
     private const string TEAM_KEY = "team";
 
     [Header("UI - Start Game Button")]
-    public GameObject startGameButton;   // assign in inspector
+    public GameObject startGameButton;   
     private static bool isGameStarting = false;
 
     void Start()
     {
+        isGameStarting = false;
+        
+        // 1. בדיקה האם נכנסנו מאוחר והמשחק כבר רץ
+        CheckIfGameAlreadyStarted();
+
+        // 2. הגדרת זמן חסד לניתוק
+        if (PhotonNetwork.IsMasterClient && PhotonNetwork.CurrentRoom != null)
+        {
+            PhotonNetwork.CurrentRoom.PlayerTtl = 60000; // 60 שניות
+        }
 
         if (GameManager.Instance != null)
             GameManager.Instance.ForceDisableVoiceEverywhere();
-              
-
-        // RESET LOCK: Ensure we can start a new game when we enter the lobby
-        isGameStarting = false;
 
         if (roomCodeText != null && PhotonNetwork.CurrentRoom != null)
-        {
-            // This gets the real Room Name (like "829202") from Photon
             roomCodeText.text = "Code: " + PhotonNetwork.CurrentRoom.Name;
-        }
         
-        // 1. Fill dropdown with category names
-        if (categoryDropdown != null && GameManager.Instance != null)
-        {
-            categoryDropdown.ClearOptions();
+        // אתחול דרופדאונים (קטגוריה וקושי)
+        InitCategoryAndDifficulty();
 
-            List<string> names = new List<string>();
-            if (GameManager.Instance.categories != null)
-            {
-                foreach (var c in GameManager.Instance.categories)
-                    names.Add(c.categoryName);
-            }
+        // שחזור הגדרות מהחדר
+        SyncSettingsFromRoom();
 
-            categoryDropdown.AddOptions(names);
-
-            // 2. Set saved selection
-            if (GameManager.Instance.state != null)
-                categoryDropdown.value = GameManager.Instance.state.selectedCategoryIndex;
-
-            // 3. Listen for changes
-            categoryDropdown.onValueChanged.AddListener(OnCategoryChanged);
-        }
-
-        var props = PhotonNetwork.CurrentRoom.CustomProperties;
-
-        if (props.ContainsKey("RoundTime"))
-            AliasGameSettings.RoundTimeSeconds = (int)props["RoundTime"];
-
-        if (props.ContainsKey("NumTeams"))
-            AliasGameSettings.NumTeams = (int)props["NumTeams"];
-
-        if (props.ContainsKey("Score"))
-            AliasGameSettings.Score = (int)props["Score"];
-
-        if (props.ContainsKey("Category"))
-            GameManager.Instance.SetCategory((int)props["Category"]);
-
-        InitDropdownValues();
         UpdateSettingsSummaryLabel();
         RefreshPlayersTable();
         
-        // Setup Start Button - Only adds listener if not already set in Inspector
         if(startGameButton != null)
         {
-             // Remove all previous listeners to be safe (prevents double clicks)
              startGameButton.GetComponent<UnityEngine.UI.Button>().onClick.RemoveAllListeners();
              startGameButton.GetComponent<UnityEngine.UI.Button>().onClick.AddListener(StartGame);
         }
 
-        bool isHost = PhotonNetwork.IsMasterClient;
+        if (PhotonNetwork.IsMasterClient)
+        {
+            // 1. עדכון ה-GameManager המקומי מיד לפי מה שכתוב ב-Dropdown
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.SetCategory(categoryDropdown.value);
+                GameManager.Instance.SetDifficulty(difficultyDropdown.value);
+            }
 
-        if (startGameButton != null) 
-            startGameButton.SetActive(isHost);
+            // 2. בדיקה האם החדר "ריק" מהגדרות. אם כן - נדחוף את ברירת המחדל לענן
+            var props = PhotonNetwork.CurrentRoom.CustomProperties;
+            if (!props.ContainsKey("Category") || !props.ContainsKey("Difficulty"))
+            {
+                Hashtable initialProps = new Hashtable
+                {
+                    { "RoundTime", AliasGameSettings.RoundTimeSeconds },
+                    { "NumTeams", AliasGameSettings.NumTeams },
+                    { "Score", AliasGameSettings.Score },
+                    { "Category", categoryDropdown.value },      // לוקח את הערך הראשון (0)
+                    { "Difficulty", difficultyDropdown.value }   // לוקח את הערך הראשון (Easy)
+                };
+                PhotonNetwork.CurrentRoom.SetCustomProperties(initialProps);
+            }
+        }
 
-        if (settingsButton != null) 
-            settingsButton.SetActive(isHost);
+        UpdateHostUI();
+    }
 
-        if (difficultyDropdown != null)
+    // פונקציה חדשה וחשובה!
+    void CheckIfGameAlreadyStarted()
+    {
+        if (PhotonNetwork.CurrentRoom != null && PhotonNetwork.CurrentRoom.CustomProperties.ContainsKey("GameStarted"))
+        {
+            bool started = (bool)PhotonNetwork.CurrentRoom.CustomProperties["GameStarted"];
+            if (started)
+            {
+                Debug.Log("Game already started! Joining mid-game...");
+                // מעבר מיידי למשחק
+                PhotonNetwork.LoadLevel("GameScene");
+            }
+        }
+    }
+
+    void InitCategoryAndDifficulty()
+    {
+        if (categoryDropdown != null && GameManager.Instance != null)
+        {
+            categoryDropdown.ClearOptions();
+            List<string> names = new List<string>();
+            if (GameManager.Instance.categories != null)
+            {
+                foreach (var c in GameManager.Instance.categories) names.Add(c.categoryName);
+            }
+            categoryDropdown.AddOptions(names);
+            categoryDropdown.value = GameManager.Instance.state.selectedCategoryIndex;
+            categoryDropdown.onValueChanged.AddListener(OnCategoryChanged);
+        }
+
+        if (difficultyDropdown != null && GameManager.Instance != null)
         {
             difficultyDropdown.ClearOptions();
             difficultyDropdown.AddOptions(new List<string> { "Easy", "Medium", "Hard" });
@@ -120,57 +136,55 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
         }
     }
 
+    void SyncSettingsFromRoom()
+    {
+        if (PhotonNetwork.CurrentRoom == null) return;
+        var props = PhotonNetwork.CurrentRoom.CustomProperties;
+        if (props.ContainsKey("RoundTime")) AliasGameSettings.RoundTimeSeconds = (int)props["RoundTime"];
+        if (props.ContainsKey("NumTeams")) AliasGameSettings.NumTeams = (int)props["NumTeams"];
+        if (props.ContainsKey("Score")) AliasGameSettings.Score = (int)props["Score"];
+        if (props.ContainsKey("Category")) GameManager.Instance.SetCategory((int)props["Category"]);
+        if (props.ContainsKey("Difficulty")) GameManager.Instance.SetDifficulty((int)props["Difficulty"]);
+        
+        InitDropdownValues();
+    }
 
+    // שאר הקוד נשאר די דומה, רק מוודאים סנכרון
+    void UpdateHostUI()
+    {
+        bool isHost = PhotonNetwork.IsMasterClient;
+        if (startGameButton != null) startGameButton.SetActive(isHost);
+        if (settingsButton != null) settingsButton.SetActive(isHost);
+        if (categoryDropdown) categoryDropdown.interactable = isHost;
+        if (difficultyDropdown) difficultyDropdown.interactable = isHost;
+        if (roundTimeDropdown) roundTimeDropdown.interactable = isHost;
+        if (teamsDropdown) teamsDropdown.interactable = isHost;
+        if (scoreDropdown) scoreDropdown.interactable = isHost;
+    }
 
     void OnCategoryChanged(int index)
     {
-        if (GameManager.Instance != null)
+        if (PhotonNetwork.IsMasterClient && GameManager.Instance != null)
         {
             GameManager.Instance.state.selectedCategoryIndex = index;
             GameManager.Instance.SetCategory(index);
         }
     }
 
-
-    // ---------- SETTINGS ----------
-
     void InitDropdownValues()
     {
-        if (roundTimeDropdown != null)
-        {
-            for (int i = 0; i < roundTimeDropdown.options.Count; i++)
-            {
-                if (int.TryParse(roundTimeDropdown.options[i].text, out int v) &&
-                    v == AliasGameSettings.RoundTimeSeconds)
-                {
-                    roundTimeDropdown.value = i;
-                    break;
-                }
-            }
-        }
+        if (roundTimeDropdown != null) SetDropdownValue(roundTimeDropdown, AliasGameSettings.RoundTimeSeconds);
+        if (teamsDropdown != null) SetDropdownValue(teamsDropdown, AliasGameSettings.NumTeams);
+        if (scoreDropdown != null) SetDropdownValue(scoreDropdown, AliasGameSettings.Score);
+    }
 
-        if (teamsDropdown != null)
+    void SetDropdownValue(TMP_Dropdown dd, int val)
+    {
+        for (int i = 0; i < dd.options.Count; i++)
         {
-            for (int i = 0; i < teamsDropdown.options.Count; i++)
+            if (int.TryParse(dd.options[i].text, out int v) && v == val)
             {
-                if (int.TryParse(teamsDropdown.options[i].text, out int v) &&
-                    v == AliasGameSettings.NumTeams)
-                {
-                    teamsDropdown.value = i;
-                    break;
-                }
-            }
-        }
-        if (scoreDropdown != null)
-        {
-            for (int i = 0; i < scoreDropdown.options.Count; i++)
-            {
-                if (int.TryParse(scoreDropdown.options[i].text, out int v) &&
-                    v == AliasGameSettings.Score)
-                {
-                    scoreDropdown.value = i;
-                    break;
-                }
+                dd.value = i; return;
             }
         }
     }
@@ -182,8 +196,7 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
             string categoryName = "None";
             if (GameManager.Instance != null && GameManager.Instance.currentCategory != null)
                 categoryName = GameManager.Instance.currentCategory.categoryName;
-
-           
+            
             string difficultyStr = GameManager.Instance.selectedDifficulty.ToString();
 
             settingsSummaryText.text =
@@ -192,43 +205,20 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
         }
     }
 
-    public void OnSettingsButton()
-    {
-        if (settingsPanel != null)
-            settingsPanel.SetActive(true);
-    }
+    public void OnSettingsButton() { if (settingsPanel) settingsPanel.SetActive(true); }
+    public void OnCloseSettingsButton() { if (settingsPanel) settingsPanel.SetActive(false); }
 
-    public void OnCloseSettingsButton()
-    {
-        if (settingsPanel != null)
-            settingsPanel.SetActive(false);
-    }
-
-    // Save Settings
     public void OnApplySettingsButton()
     {
-        Debug.Log($"InRoom={PhotonNetwork.InRoom}, Room={(PhotonNetwork.CurrentRoom == null ? "NULL" : "OK")}");
-
-        if (!PhotonNetwork.IsMasterClient) return; // only host can change settings
+        if (!PhotonNetwork.IsMasterClient) return;
 
         int newRoundTime = AliasGameSettings.RoundTimeSeconds;
         int newNumTeams = AliasGameSettings.NumTeams;
         int newScore = AliasGameSettings.Score;
 
-        if (roundTimeDropdown != null)
-            int.TryParse(roundTimeDropdown.options[roundTimeDropdown.value].text, out newRoundTime);
-
-        if (teamsDropdown != null)
-            int.TryParse(teamsDropdown.options[teamsDropdown.value].text, out newNumTeams);
-
-        if (scoreDropdown != null)
-            int.TryParse(scoreDropdown.options[scoreDropdown.value].text, out newScore);
-
-        if (categoryDropdown != null && GameManager.Instance != null)
-        {
-            int selectedIndex = categoryDropdown.value;
-            GameManager.Instance.SetCategory(selectedIndex);
-        }
+        if (roundTimeDropdown) int.TryParse(roundTimeDropdown.options[roundTimeDropdown.value].text, out newRoundTime);
+        if (teamsDropdown) int.TryParse(teamsDropdown.options[teamsDropdown.value].text, out newNumTeams);
+        if (scoreDropdown) int.TryParse(scoreDropdown.options[scoreDropdown.value].text, out newScore);
 
         Hashtable props = new Hashtable
         {
@@ -240,25 +230,28 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
         };
         PhotonNetwork.CurrentRoom.SetCustomProperties(props);
 
-
-        if (settingsPanel != null)
-            settingsPanel.SetActive(false);
+        if (settingsPanel) settingsPanel.SetActive(false);
     }
 
-    public override void OnRoomPropertiesUpdate(Hashtable changedProps) // change
+    public override void OnRoomPropertiesUpdate(Hashtable changedProps)
     {
-        if (changedProps.ContainsKey("RoundTime"))
-            AliasGameSettings.RoundTimeSeconds = (int)changedProps["RoundTime"];
+        // אם המשחק התחיל בזמן שהיינו בלובי - כנס מיד!
+        if (changedProps.ContainsKey("GameStarted") && (bool)changedProps["GameStarted"])
+        {
+            PhotonNetwork.LoadLevel("GameScene");
+            return;
+        }
 
-        if (changedProps.ContainsKey("NumTeams"))
-            AliasGameSettings.NumTeams = (int)changedProps["NumTeams"];
-
-        if (changedProps.ContainsKey("Score"))
-            AliasGameSettings.Score = (int)changedProps["Score"];
-
-        if (changedProps.ContainsKey("Category"))
-            GameManager.Instance.SetCategory((int)changedProps["Category"]);
+        if (changedProps.ContainsKey("RoundTime")) AliasGameSettings.RoundTimeSeconds = (int)changedProps["RoundTime"];
+        if (changedProps.ContainsKey("NumTeams")) AliasGameSettings.NumTeams = (int)changedProps["NumTeams"];
+        if (changedProps.ContainsKey("Score")) AliasGameSettings.Score = (int)changedProps["Score"];
         
+        if (changedProps.ContainsKey("Category"))
+        {
+             GameManager.Instance.SetCategory((int)changedProps["Category"]);
+             if(categoryDropdown) categoryDropdown.value = (int)changedProps["Category"];
+        }
+
         if (changedProps.ContainsKey("Difficulty"))
         {
             int diffIdx = (int)changedProps["Difficulty"];
@@ -269,144 +262,106 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
         InitDropdownValues();
         UpdateSettingsSummaryLabel();
         RefreshPlayersTable();
-        Debug.Log("Room props updated: " + changedProps.ToStringFull());
     }
 
     // ---------- PLAYERS TABLE ----------
-
-    void ClearPlayersTable()
-    {
-        foreach (Transform t in teamTable)
-            Destroy(t.gameObject);
-    }
+    void ClearPlayersTable() { foreach (Transform t in teamTable) Destroy(t.gameObject); }
 
     void RefreshPlayersTable()
     {
         ClearPlayersTable();
-
         teamColumns.Clear();
 
         int numTeams = AliasGameSettings.NumTeams;
         for(int i = 0; i < numTeams; i++)
         {
-            GameObject colObj = Instantiate(teamColumnPrefab, teamTable);//
-            TeamColumnUI col = colObj.GetComponent<TeamColumnUI>();//
-            col.Init(i, this);//
-            teamColumns.Add(col);//
+            GameObject colObj = Instantiate(teamColumnPrefab, teamTable);
+            TeamColumnUI col = colObj.GetComponent<TeamColumnUI>();
+            col.Init(i, this);
+            teamColumns.Add(col);
         }
         int[] counts = new int[numTeams];
 
         foreach (Player p in PhotonNetwork.PlayerList)
         {
             int teamIndex = GetPlayerTeam(p); 
-            if (teamIndex < 0 || teamIndex >= numTeams)
-                continue;
+            if (teamIndex < 0 || teamIndex >= numTeams) continue;
 
             counts[teamIndex]++;
-
-            GameObject nameObj = Instantiate(playerNamePrefab, teamColumns[teamIndex].playersList);//
-            TMP_Text txt = nameObj.GetComponent<TMP_Text>();//
-            if (txt != null) txt.text = p.NickName;//
+            GameObject nameObj = Instantiate(playerNamePrefab, teamColumns[teamIndex].playersList);
+            TMP_Text txt = nameObj.GetComponent<TMP_Text>();
+            if (txt != null) txt.text = p.NickName;
         }
 
-        for (int i = 0; i < numTeams; i++)
-            teamColumns[i].SetCount(counts[i]);
+        for (int i = 0; i < numTeams; i++) teamColumns[i].SetCount(counts[i]);
     }
 
-    public int GetPlayerTeam(Player p)//
+    public int GetPlayerTeam(Player p)
     {
-        if (p.CustomProperties.TryGetValue(TEAM_KEY, out object value)) // Does this player have a property with key "team"
-        {
-            if (value is int idx)
-                return idx;
-        }
+        if (p.CustomProperties.TryGetValue(TEAM_KEY, out object value))
+            if (value is int idx) return idx;
         return -1;
     }
 
     public void OnLocalPlayerChooseTeam(int teamIndex)
     {
-        ExitGames.Client.Photon.Hashtable props = new ExitGames.Client.Photon.Hashtable(); 
-        props[TEAM_KEY] = teamIndex; //Stores the chosen team index in that dictionary under the key
-        PhotonNetwork.LocalPlayer.SetCustomProperties(props); //Publishes those properties to Photon so everyone sees that this player is now on that team.
+        Hashtable props = new Hashtable(); 
+        props[TEAM_KEY] = teamIndex;
+        PhotonNetwork.LocalPlayer.SetCustomProperties(props);
     }
 
-    // ---------- PHOTON CALLBACKS ----------
-
-    public override void OnPlayerEnteredRoom(Player newPlayer)
+    public override void OnPlayerEnteredRoom(Player newPlayer) 
+    { 
+        RefreshPlayersTable(); 
+        
+        // אם אני הוסט ונכנס שחקן, אני מוודא שהוא מקבל את המצב העדכני
+        if (PhotonNetwork.IsMasterClient)
+        {
+            // אין צורך לשלוח ידנית, ה-RoomProps כבר שם
+        }
+    }
+    public override void OnPlayerLeftRoom(Player otherPlayer) { RefreshPlayersTable(); }
+    public override void OnPlayerPropertiesUpdate(Player targetPlayer, Hashtable changedProps)
     {
-        RefreshPlayersTable();
+        if (changedProps.ContainsKey(TEAM_KEY)) RefreshPlayersTable();
     }
-
-    public override void OnPlayerLeftRoom(Player otherPlayer)
+    
+    public override void OnMasterClientSwitched(Player newMasterClient)
     {
-        RefreshPlayersTable();
+        UpdateHostUI();
     }
 
-    public override void OnPlayerPropertiesUpdate(Player targetPlayer, ExitGames.Client.Photon.Hashtable changedProps)//
-    {
-        if (changedProps.ContainsKey(TEAM_KEY))
-            RefreshPlayersTable();
-    }
-
-    // ---------- START GAME (STATIC LOCK VERSION) ----------
-
+    // ---------- START GAME ----------
     private void StartGame()
     {
-        
-        // if (GameManager.Instance != null)
-        //     GameManager.Instance.ApplyVoiceMode();
-        // 1. Safety Checks
         if (!PhotonNetwork.IsMasterClient) return;
-        
-        // GLOBAL LOCK: If ANY script has started the game, stop.
-        if (isGameStarting) 
-        {
-             Debug.LogWarning("StartGame blocked: Game is already starting.");
-             return;
-        }
+        if (isGameStarting) return;
 
-        // 2. Lock it immediately
         isGameStarting = true;
-        Debug.Log("Starting Game...");
+        if (startGameButton != null) startGameButton.GetComponent<UnityEngine.UI.Button>().interactable = false;
 
-        if (startGameButton != null) 
-            startGameButton.GetComponent<UnityEngine.UI.Button>().interactable = false;
-
-        // 3. Create GameManager teams
         GameManager.Instance.InitializeTeams(AliasGameSettings.NumTeams);
-
         GameManager.Instance.settings.targetScore = AliasGameSettings.Score;
 
-        // 4. Assign players to teams
+        // שמירת השחקנים בצוותים בתוך GameManager (לגיבוי)
         foreach (Player p in PhotonNetwork.PlayerList)
         {
             int teamIndex = GetPlayerTeam(p);
             if (teamIndex < 0) teamIndex = 0; 
-
             if (teamIndex < GameManager.Instance.teams.Count)
             {
                 TeamInfo t = GameManager.Instance.teams[teamIndex];
-                PlayerInfo info = new PlayerInfo(p.ActorNumber.ToString(), p.NickName);
-                t.players.Add(info);
+                t.players.Add(new PlayerInfo(p.ActorNumber.ToString(), p.NickName));
             }
         }
-
-        PhotonNetwork.CurrentRoom.SetCustomProperties(new ExitGames.Client.Photon.Hashtable
-        {
-            { "NextTeamIndex", 0 }
+        
+        // סימון שהמשחק התחיל - זה יגרום לכולם לעבור סצנה
+        PhotonNetwork.CurrentRoom.SetCustomProperties(new Hashtable { 
+            { "NextTeamIndex", 0 },
+            { "GameStarted", true } 
         });
 
-
-        // 6. Load scoreboard (ONCE)
+        // גם ההוסט עובר
         PhotonNetwork.LoadLevel("GameScene");
-    }
-
-    public override void OnMasterClientSwitched(Player newMasterClient)
-    {
-        if (PhotonNetwork.LocalPlayer.IsMasterClient)
-        {
-            if (startGameButton != null) startGameButton.SetActive(true);
-            if (settingsButton != null) settingsButton.SetActive(true);
-        }
     }
 }

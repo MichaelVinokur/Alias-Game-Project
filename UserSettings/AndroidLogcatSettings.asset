@@ -3,7 +3,7 @@
     "m_SelectedProcess": {
         "deviceId": "RFCT306PM7D",
         "name": "com.MaorMisha.Alias",
-        "processId": 19191,
+        "processId": 9101,
         "exited": false
     },
     "m_SelectedPriority": 0,
@@ -468,6 +468,42 @@
             "deviceId": "RFCT306PM7D",
             "name": "com.MaorMisha.Alias",
             "processId": 19191,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCT306PM7D",
+            "name": "com.MaorMisha.Alias",
+            "processId": 4676,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCT306PM7D",
+            "name": "com.MaorMisha.Alias",
+            "processId": 10265,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCT306PM7D",
+            "name": "com.MaorMisha.Alias",
+            "processId": 28476,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCT306PM7D",
+            "name": "com.MaorMisha.Alias",
+            "processId": 2679,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCT306PM7D",
+            "name": "com.MaorMisha.Alias",
+            "processId": 5960,
+            "exited": false
+        },
+        {
+            "deviceId": "RFCT306PM7D",
+            "name": "com.MaorMisha.Alias",
+            "processId": 9101,
             "exited": false
         },
         {
