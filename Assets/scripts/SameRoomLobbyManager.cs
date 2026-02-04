@@ -43,7 +43,7 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
         // 2. הגדרת זמן חסד לניתוק
         if (PhotonNetwork.IsMasterClient && PhotonNetwork.CurrentRoom != null)
         {
-            PhotonNetwork.CurrentRoom.PlayerTtl = 60000; // 60 שניות
+            PhotonNetwork.CurrentRoom.PlayerTtl = 30000; // 30 seconds
         }
 
         if (GameManager.Instance != null)
@@ -364,4 +364,5 @@ public class SameRoomLobbyManager : MonoBehaviourPunCallbacks
         // גם ההוסט עובר
         PhotonNetwork.LoadLevel("GameScene");
     }
+
 }

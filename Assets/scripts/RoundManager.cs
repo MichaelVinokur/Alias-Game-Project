@@ -50,7 +50,7 @@ public class RoundManager : MonoBehaviourPunCallbacks
         InitRoundFromRoomProps();
         Debug.Log($"[RM] Start running. activeSelf={gameObject.activeSelf} room={PhotonNetwork.InRoom}");
         var r = Object.FindAnyObjectByType<Recorder>(FindObjectsInactive.Include);
-        Debug.Log($"[VOICE] recorder={(r != null)} recEnabled={(r != null && r.RecordingEnabled)} transmit={(r != null && r.TransmitEnabled)}");
+        //Debug.Log($"[VOICE] recorder={(r != null)} recEnabled={(r != null && r.RecordingEnabled)} transmit={(r != null && r.TransmitEnabled)}");
     }
 
 
@@ -175,7 +175,7 @@ public class RoundManager : MonoBehaviourPunCallbacks
 
         if (candidates.Count == 0)
         {
-            Debug.LogError($"[RM] No candidates found for team {teamIndex}");
+            Debug.LogError($"[RM] No candidates found for team {teamIndex+1}");
             return;
         }
 
@@ -274,7 +274,6 @@ public class RoundManager : MonoBehaviourPunCallbacks
     [PunRPC]
     void RPC_SetWord(string w)
     {
-        Debug.Log($"RPC Received! Word: {w}"); 
         if (wordText != null)
         {
             wordText.text = isReader ? w : "GUESS!";
@@ -483,7 +482,7 @@ public class RoundManager : MonoBehaviourPunCallbacks
             recorder.TransmitEnabled = shouldActuallyTransmit;
             recorder.RecordingEnabled = shouldActuallyTransmit;
             
-            Debug.Log($"[VOICE] Mic Enabled: {shouldActuallyTransmit} (GameMode: {GameManager.Instance.VoiceEnabled})");
+            //Debug.Log($"[VOICE] Mic Enabled: {shouldActuallyTransmit} (GameMode: {GameManager.Instance.VoiceEnabled})");
         }
     }
 
@@ -547,6 +546,35 @@ public class RoundManager : MonoBehaviourPunCallbacks
             startRoundButton.SetActive(PhotonNetwork.IsMasterClient && !running);
         }
     }
+    public override void OnMasterClientSwitched(Photon.Realtime.Player newMasterClient)
+    {
+        // Only the new master should take over the timer
+        if (PhotonNetwork.LocalPlayer != newMasterClient) return;
+
+        if (!PhotonNetwork.InRoom || PhotonNetwork.CurrentRoom == null) return;
+
+        var props = PhotonNetwork.CurrentRoom.CustomProperties;
+
+        // Only if we are currently in a round
+        if (!props.TryGetValue("Phase", out var ph) || (string)ph != "Round")
+            return;
+
+        // Adopt the last synced timer value from room props
+        if (props.TryGetValue("Timer", out var tv))
+            timer = (int)tv;
+        else
+            timer = AliasGameSettings.RoundTimeSeconds;
+
+        // Resume ticking as the new master
+        running = true;
+        nextTimerSync = 0f;
+
+        // Optional: reset the 5-sec warning if needed
+        warnedLastFive = (timer <= 5 && timer > 0);
+
+        Debug.Log("[RM] I am new master -> resumed timer at " + timer);
+    }
+
 
 
 }

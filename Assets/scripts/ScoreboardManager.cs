@@ -44,6 +44,7 @@ public class ScoreboardManager : MonoBehaviourPunCallbacks
         BuildScoreboardUI();
         SetupStartButton();
         UpdateScoreboardTextFromRoom();
+        RefreshStartRoundButton();
     }
 
     public override void OnRoomPropertiesUpdate(ExitGames.Client.Photon.Hashtable changedProps)
@@ -62,12 +63,11 @@ public class ScoreboardManager : MonoBehaviourPunCallbacks
         if (changedProps.ContainsKey("ScoreTick") ||
             (changedProps.TryGetValue("Phase", out var ph) && (string)ph == "Scoreboard"))
         {
-            // BuildScoreboardUI();
             StartCoroutine(RebuildNextFrame());
-
         }
-
         UpdateScoreboardTextFromRoom();
+        RefreshHostOnlyUI();
+        RefreshStartRoundButton();
     }
 
     IEnumerator RebuildNextFrame()
@@ -104,8 +104,6 @@ public class ScoreboardManager : MonoBehaviourPunCallbacks
         });
     }
 
-
-
     void UpdateScoreboardTextFromRoom()
     {
         if (!PhotonNetwork.InRoom) return;
@@ -140,6 +138,11 @@ public class ScoreboardManager : MonoBehaviourPunCallbacks
 
     void BuildScoreboardUI()
     {
+        if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom != null && GameManager.Instance != null)
+        {
+            GameManager.Instance.SyncStateFromRoom(); // pulls Score_i from room props into teams[]
+        }
+
         if (teamsListContainer == null || teamCardPrefab == null)
         {
             Debug.LogWarning("[SBM] Missing teamsListContainer or teamCardPrefab");
@@ -178,4 +181,31 @@ public class ScoreboardManager : MonoBehaviourPunCallbacks
 
         return -1;
     }
+    void RefreshHostOnlyUI()
+    {
+        if (startRoundButton)
+            startRoundButton.gameObject.SetActive(PhotonNetwork.IsMasterClient);
+
+        SetupStartButton(); // ensures the click listener matches current host
+    }
+    public override void OnMasterClientSwitched(Photon.Realtime.Player newMasterClient)
+    {
+        RefreshHostOnlyUI();
+        RefreshStartRoundButton();
+        SetupStartButton();
+    }
+
+    void RefreshStartRoundButton()
+    {
+        if (!startRoundButton) return;
+
+        string phase = "Scoreboard";
+        var props = PhotonNetwork.CurrentRoom?.CustomProperties;
+        if (props != null && props.TryGetValue("Phase", out var p))
+            phase = (string)p;
+
+        startRoundButton.gameObject.SetActive(PhotonNetwork.IsMasterClient && phase != "Round");
+    }
+
+
 }

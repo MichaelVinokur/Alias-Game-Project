@@ -91,29 +91,15 @@ public class GameManager : MonoBehaviourPunCallbacks
             }
         }
     }
-
-    // private void Start()
-    // {
-    //     // אם התעוררנו וכבר יש חדר פעיל (למשל אחרי התנתקות), נסנכרן מיד
-    //     if (PhotonNetwork.InRoom)
-    //     {
-    //         SyncStateFromRoom();
-    //     }
-    //     else
-    //     {
-    //         // טעינת ברירת מחדל אם אין חיבור
-    //         LoadDefaultWords();
-    //     }
-    // }
-
     
     public override void OnJoinedRoom()
     {
         base.OnJoinedRoom();
         SyncStateFromRoom();
+        SyncScoresFromRoomProps(PhotonNetwork.CurrentRoom.CustomProperties);
     }
 
-    // עדכון תמידי מהענן
+    // עדכון תמידי מהענןkakak
     public override void OnRoomPropertiesUpdate(Hashtable propertiesThatChanged)
     {
         SyncScoresFromRoomProps(propertiesThatChanged);
@@ -122,6 +108,10 @@ public class GameManager : MonoBehaviourPunCallbacks
         if (propertiesThatChanged.ContainsKey("Category")) SetCategory((int)propertiesThatChanged["Category"]);
         if (propertiesThatChanged.ContainsKey("Difficulty")) SetDifficulty((int)propertiesThatChanged["Difficulty"]);
         if (propertiesThatChanged.ContainsKey("NextTeamIndex")) NextTeamIndex = (int)propertiesThatChanged["NextTeamIndex"];
+        if (propertiesThatChanged.ContainsKey("RoundTime")) settings.roundSeconds = (int)propertiesThatChanged["RoundTime"];
+        if (propertiesThatChanged.ContainsKey("NumTeams")) settings.numberOfTeams = (int)propertiesThatChanged["NumTeams"];
+        if (propertiesThatChanged.ContainsKey("Score")) settings.targetScore = (int)propertiesThatChanged["Score"];
+
     }
 
     // החלפת הוסט - ההוסט החדש לוקח פיקוד ומוודא סנכרון
@@ -140,7 +130,10 @@ public class GameManager : MonoBehaviourPunCallbacks
         if (PhotonNetwork.CurrentRoom == null) return;
         
         var props = PhotonNetwork.CurrentRoom.CustomProperties;
-        
+        if (props.ContainsKey("RoundTime")) settings.roundSeconds = (int)props["RoundTime"];
+        if (props.ContainsKey("NumTeams")) settings.numberOfTeams = (int)props["NumTeams"];
+        if (props.ContainsKey("Score")) settings.targetScore = (int)props["Score"];
+
         // 1. קטגוריות וקושי
         if (categories != null && categories.Length > 0)
         {

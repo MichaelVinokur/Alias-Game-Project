@@ -27,6 +27,8 @@ public class SameRoomNetworkManager : MonoBehaviourPunCallbacks
     public static bool PendingIsHosting { get; private set; }
     private static string pendingName;
     private static string pendingCode;
+
+
     void Awake()
     {
         Debug.Log("[SRNM] Awake instance id=" + GetInstanceID());
@@ -49,10 +51,6 @@ public class SameRoomNetworkManager : MonoBehaviourPunCallbacks
     {
         Debug.Log("Connected to Photon");
         PhotonNetwork.AutomaticallySyncScene = true;
-    }
-    public override void OnDisconnected(DisconnectCause cause)
-    {
-        Debug.LogError("[SRNM] Disconnected: " + cause);
     }
     // ================= HOST FLOW =================
 
@@ -88,7 +86,12 @@ public class SameRoomNetworkManager : MonoBehaviourPunCallbacks
     {
         PhotonNetwork.NickName = savedName;
         string roomCode = Random.Range(100, 999).ToString();
-        RoomOptions options = new RoomOptions { MaxPlayers = 8 };
+        RoomOptions options = new RoomOptions
+        {
+            MaxPlayers = 8,
+            PlayerTtl = 30000,
+            EmptyRoomTtl = 60000
+        };
         PhotonNetwork.CreateRoom(roomCode, options);
 
         if (hostCodeText != null)
@@ -137,7 +140,7 @@ public class SameRoomNetworkManager : MonoBehaviourPunCallbacks
     public override void OnJoinedRoom()
     {
         Debug.Log("Joined room: " + PhotonNetwork.CurrentRoom.Name);
-        PhotonNetwork.LoadLevel("SameRoomLobby_edit");//change new lobby
+        PhotonNetwork.LoadLevel("SameRoomLobby_edit");
     }
 
     public override void OnJoinRoomFailed(short returnCode, string message)
@@ -156,7 +159,12 @@ public class SameRoomNetworkManager : MonoBehaviourPunCallbacks
     {
         PhotonNetwork.NickName = pendingName;
         string roomCode = Random.Range(100, 999).ToString();
-        RoomOptions options = new RoomOptions { MaxPlayers = 8 };
+        RoomOptions options = new RoomOptions
+        {
+            MaxPlayers = 8,
+            PlayerTtl = 30000,
+            EmptyRoomTtl = 60000
+        };
         PhotonNetwork.CreateRoom(roomCode, options);
     }
 
@@ -186,4 +194,5 @@ public class SameRoomNetworkManager : MonoBehaviourPunCallbacks
             yield return null;
         }
     }
+
 }

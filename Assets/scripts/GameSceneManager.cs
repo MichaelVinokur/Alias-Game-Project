@@ -42,14 +42,13 @@ public class GameSceneManager : MonoBehaviourPunCallbacks
     }
     void Start()
     {
-        //
         if (PhotonNetwork.InRoom && GameManager.Instance != null)
             GameManager.Instance.ResetMatch(AliasGameSettings.NumTeams);
-        //
-        
+
         RefreshPanels();
         GameManager.Instance.SetMicState(true);//test test test
     }
+    //kakak
     public override void OnEnable()
     {
         base.OnEnable();
@@ -132,7 +131,6 @@ public class GameSceneManager : MonoBehaviourPunCallbacks
 
         PhotonNetwork.CurrentRoom.SetCustomProperties(ht);
     }
-    //
 
 }
 
