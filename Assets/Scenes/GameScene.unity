@@ -2889,6 +2889,7 @@ MonoBehaviour:
   correctButton: {fileID: 483524731}
   penaltyButton: {fileID: 880296420}
   spectatorWordText: {fileID: 1358453177}
+  startRoundButton: {fileID: 0}
   hostDecisionPanel: {fileID: 2082477026}
   gamePausedOverlay: {fileID: 8759140}
   reportCheatButton: {fileID: 1244391041}

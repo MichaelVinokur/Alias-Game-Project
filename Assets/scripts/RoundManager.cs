@@ -507,7 +507,7 @@ public class RoundManager : MonoBehaviourPunCallbacks
         }
     }
 
-    void ApplyVoiceByActiveTeam(int activeTeam)
+    public void ApplyVoiceByActiveTeam(int activeTeam)
     {
         // SameRoom mode => always off
         if (GameManager.Instance == null || !GameManager.Instance.VoiceEnabled)
